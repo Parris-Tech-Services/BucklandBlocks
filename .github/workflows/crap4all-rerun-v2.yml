@@ -1,0 +1,61 @@
+name: Temporary crap4all rerun v2
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/crap4all-rerun-v2.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install 'lizard>=1.24.0,<2'
+      - name: Run fixed crap4all-compatible audit
+        run: |
+          python <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          import lizard
+          EXT={'.c','.cc','.cpp','.cxx','.h','.hpp','.cs','.erl','.f','.f90','.gd','.go','.java','.js','.jsx','.kt','.kts','.lua','.m','.mm','.pl','.pm','.php','.py','.r','.rb','.rs','.scala','.sol','.swift','.ts','.tsx','.vue','.zig'}
+          LANG={'.c':'C','.h':'C/C++','.cc':'C++','.cpp':'C++','.cxx':'C++','.hpp':'C++','.cs':'C#','.erl':'Erlang','.f':'Fortran','.f90':'Fortran','.gd':'GDScript','.go':'Go','.java':'Java','.js':'JavaScript','.jsx':'JavaScript/JSX','.kt':'Kotlin','.kts':'Kotlin','.lua':'Lua','.m':'Objective-C','.mm':'Objective-C++','.pl':'Perl','.pm':'Perl','.php':'PHP','.py':'Python','.r':'R','.rb':'Ruby','.rs':'Rust','.scala':'Scala','.sol':'Solidity','.swift':'Swift','.ts':'TypeScript','.tsx':'TypeScript/TSX','.vue':'Vue','.zig':'Zig'}
+          EX={'.git','node_modules','vendor','dist','build','target','.venv','venv','coverage','.next','.cache','__pycache__'}; JS={'.js','.jsx','.ts','.tsx'}
+          def minified(p):
+              if p.suffix.lower() not in JS:return False
+              try:s=p.open('r',encoding='utf-8',errors='ignore').read(32768)
+              except OSError:return False
+              return len(s)>=4096 and len(s)/(s.count('\n')+1)>=500
+          def hashed(p):
+              if p.suffix.lower() not in JS or not any(x.casefold()=='assets' for x in p.parts[:-1]):return False
+              a=p.stem.rsplit('-',1)
+              if len(a)!=2:return False
+              t=a[1]
+              if not (6<=len(t)<=32) or not all(c.isalnum() or c in '_-' for c in t):return False
+              classes=sum((any(c.islower() for c in t),any(c.isupper() for c in t),any(c.isdigit() for c in t),any(c in '_-' for c in t)))
+              try:return classes>=2 and p.stat().st_size>=4096
+              except OSError:return False
+          root=Path('.').resolve(); files=[]
+          for p in root.rglob('*'):
+              if not p.is_file() or p.suffix.lower() not in EXT:continue
+              r=p.relative_to(root)
+              if any(x in EX for x in r.parts[:-1]) or hashed(p) or minified(p):continue
+              files.append(p)
+          files.sort(); langs={}; scores=[]
+          for p in files:
+              k=LANG.get(p.suffix.lower(),p.suffix.lower().lstrip('.') or 'unknown'); langs[k]=langs.get(k,0)+1
+              try:res=lizard.analyze_file(str(p))
+              except Exception:continue
+              fs=list(getattr(res,'function_list',[]) or []); fs.sort(key=lambda f:int(getattr(f,'start_line',0))); rel=p.relative_to(root).as_posix()
+              for i,f in enumerate(fs):
+                  cc=int(getattr(f,'cyclomatic_complexity',1) or 1); st=int(getattr(f,'start_line',1) or 1); en=getattr(f,'end_line',None)
+                  if not isinstance(en,int) or en<st:
+                      nl=int(getattr(f,'nloc',1) or 1); nx=int(getattr(fs[i+1],'start_line',st+1))-1 if i+1<len(fs) else st; en=max(st,st+nl-1,nx)
+                  scores.append({'file':rel,'function':str(getattr(f,'long_name',None) or getattr(f,'name','<anonymous>')),'start_line':st,'end_line':en,'complexity':cc,'coverage':0.0,'coverage_status':'unavailable','coverage_kind':'none','coverage_match':'none','confidence':'none','crap':round(cc*cc+cc,2)})
+          scores.sort(key=lambda x:(-x['crap'],-x['complexity'],x['file'],x['start_line']))
+          sha=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip(); top=scores[0] if scores else None
+          print('CRAP4ALL_RERUN_RESULT='+json.dumps({'source_sha':sha,'files_scanned':len(files),'functions_scored':len(scores),'languages':dict(sorted(langs.items(),key=lambda kv:(-kv[1],kv[0]))),'coverage_files':[],'headline_crap':top['crap'] if top else None,'status':('N/A' if not top else 'High' if top['crap']>=30 else 'Caution' if top['crap']>=10 else 'Low'),'worst':top},separators=(',',':')),flush=True)
+          PY
