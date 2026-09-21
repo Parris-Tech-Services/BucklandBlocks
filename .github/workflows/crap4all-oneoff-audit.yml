@@ -1,0 +1,106 @@
+name: One-off crap4all audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/crap4all-oneoff-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'lizard>=1.24.0,<2'
+      - name: Run crap4all 0.1-compatible audit
+        shell: bash
+        run: |
+          cat > /tmp/crap4all_audit.py <<'PY'
+          from pathlib import Path
+          from fnmatch import fnmatch
+          import json, xml.etree.ElementTree as ET, lizard, os
+          EXT={'.c','.cc','.cpp','.cxx','.h','.hpp','.cs','.erl','.f','.f90','.gd','.go','.java','.js','.jsx','.kt','.kts','.lua','.m','.mm','.pl','.pm','.php','.py','.r','.rb','.rs','.scala','.sol','.swift','.ts','.tsx','.vue','.zig'}
+          LANG={'.c':'C','.h':'C/C++','.cc':'C++','.cpp':'C++','.cxx':'C++','.hpp':'C++','.cs':'C#','.erl':'Erlang','.f':'Fortran','.f90':'Fortran','.gd':'GDScript','.go':'Go','.java':'Java','.js':'JavaScript','.jsx':'JavaScript/JSX','.kt':'Kotlin','.kts':'Kotlin','.lua':'Lua','.m':'Objective-C','.mm':'Objective-C++','.pl':'Perl','.pm':'Perl','.php':'PHP','.py':'Python','.r':'R','.rb':'Ruby','.rs':'Rust','.scala':'Scala','.sol':'Solidity','.swift':'Swift','.ts':'TypeScript','.tsx':'TypeScript/TSX','.vue':'Vue','.zig':'Zig'}
+          EX=('.git/*','node_modules/*','vendor/*','dist/*','build/*','target/*','.venv/*','venv/*','coverage/*','.next/*','.cache/*','__pycache__/*')
+          def norm(s): return s.replace('\\','/').removeprefix('./')
+          def add(rep,f,n,h): rep.setdefault(norm(f),{})[n]=max(rep.setdefault(norm(f),{}).get(n,0),max(0,h))
+          def parse_cov(p):
+            rep={}; text=p.read_text(encoding='utf-8',errors='replace'); s=text.lstrip()
+            if 'SF:' in text and ('DA:' in text or 'FNDA:' in text):
+              cur=None
+              for raw in text.splitlines():
+                line=raw.strip()
+                if line.startswith('SF:'): cur=line[3:]
+                elif line.startswith('DA:') and cur:
+                  a=line[3:].split(',')
+                  if len(a)>=2:
+                    try:add(rep,cur,int(a[0]),int(float(a[1])))
+                    except ValueError:pass
+                elif line=='end_of_record':cur=None
+              return rep
+            if s.startswith('<?xml') or s.startswith('<coverage') or s.startswith('<report'):
+              root=ET.parse(p).getroot(); tag=root.tag.rsplit('}',1)[-1].lower()
+              if tag=='coverage':
+                for k in root.findall('.//class'):
+                  f=k.attrib.get('filename')
+                  if f:
+                    for x in k.findall('./lines/line'):
+                      try:add(rep,f,int(x.attrib['number']),int(float(x.attrib.get('hits','0'))))
+                      except (KeyError,ValueError):pass
+              elif tag=='report':
+                for pkg in root.findall('.//package'):
+                  pn=pkg.attrib.get('name','').strip('/')
+                  for src in pkg.findall('./sourcefile'):
+                    n=src.attrib.get('name'); f=f'{pn}/{n}' if pn else n
+                    if f:
+                      for x in src.findall('./line'):
+                        try:add(rep,f,int(x.attrib['nr']),1 if int(x.attrib.get('ci','0'))>0 or int(x.attrib.get('cb','0'))>0 else 0)
+                        except (KeyError,ValueError):pass
+              return rep
+            return {}
+          root=Path('.').resolve(); files=[]
+          for p in root.rglob('*'):
+            if p.is_file() and p.suffix.lower() in EXT:
+              rel=p.relative_to(root).as_posix()
+              if not any(fnmatch(rel,x) or fnmatch('./'+rel,x) for x in EX): files.append(p)
+          files=sorted(files); counts={}
+          for p in files:
+            la=LANG.get(p.suffix.lower(),p.suffix.lower().lstrip('.') or 'unknown'); counts[la]=counts.get(la,0)+1
+          cov={}; loaded=[]
+          for p in [root/'coverage/lcov.info',root/'lcov.info',root/'coverage.xml',root/'coverage/coverage.xml',root/'jacoco.xml',root/'target/site/jacoco/jacoco.xml',root/'build/reports/jacoco/test/jacocoTestReport.xml']:
+            if p.is_file():
+              try:
+                for f,lines in parse_cov(p).items():
+                  d=cov.setdefault(f,{})
+                  for n,h in lines.items(): d[n]=max(d.get(n,0),h)
+                loaded.append(p.relative_to(root).as_posix())
+              except Exception: pass
+          def match(p):
+            if not cov:return {},'unavailable','none','none'
+            resolved=p.resolve().as_posix(); rel=p.resolve().relative_to(root).as_posix(); direct=(resolved,rel,'./'+rel)
+            for c in direct:
+              if c in cov:return cov[c],'matched','exact','high'
+            want={c.casefold() for c in direct}; fm=[(n,v) for n,v in cov.items() if n.casefold() in want]
+            if len(fm)==1:return fm[0][1],'matched','case-insensitive','medium'
+            if len(fm)>1:return {},'ambiguous','case-insensitive','low'
+            sm=[v for n,v in cov.items() if n==rel or n.endswith('/'+rel)]
+            if len(sm)==1:return sm[0],'matched','suffix','medium'
+            if len(sm)>1:return {},'ambiguous','suffix','low'
+            bm=[v for n,v in cov.items() if Path(n).name==p.name]
+            if len(bm)==1:return bm[0],'matched','basename','low'
+            if len(bm)>1:return {},'ambiguous','basename','low'
+            return {},'unavailable','none','none'
+          scores=[]
+          for p in files:
+            try:r=lizard.analyze_file(str(p))
+            except Exception:continue
+            fns=list(getattr(r,'function_list',[]) or []); fns.sort(key=lambda f:int(getattr(f,'start_line',0))); hits,ms,strat,conf=match(p); rel=p.relative_to(root).as_posix()
+            for i,f in enumerate(fns):
+              st=int(getattr(f,'start_line',1) or 1); ns=int(getattr(fns[i+1],'start_line',st+1))-1 if i+1<len(fns) else st; end=getattr(f,'end_line',None); nl=int(getattr(f,'nloc',1) or 1); end=end if isinstance(end,int) and end>=st else max(st,st+nl-1,ns); ins={n:h for n,h in hits.items() if st<=n<=end}; ic=len(ins); ccov=sum(1 for h in ins.values() if h>0); cv=ccov/ic if ic else 0.0; cc=int(getattr(f,'cyclomatic_complexity',1) or 1); crap=round(cc**2*((1-cv)**3)+cc,2); cs=('measured' if ccov else 'uncovered') if ic else ('ambiguous' if ms=='ambiguous' else 'unavailable'); scores.append((crap,cc,rel,st,{'file':rel,'function':str(getattr(f,'long_name',None) or getattr(f,'name','<anonymous>')),'start_line':st,'end_line':end,'complexity':cc,'coverage':round(cv,4),'coverage_status':cs,'coverage_kind':'line' if ic else 'none','coverage_match':strat,'confidence':conf}))
+          scores.sort(key=lambda x:(-x[0],-x[1],x[2],x[3])); result={'repo':os.environ.get('GITHUB_REPOSITORY'),'source_sha':os.environ.get('GITHUB_SHA'),'audit_method':'crap4all 0.1.0-compatible inline snapshot','files_scanned':len(files),'functions_scored':len(scores),'languages':dict(sorted(counts.items(),key=lambda x:(-x[1],x[0]))),'coverage_files':loaded,'headline_crap':scores[0][0] if scores else None,'worst':scores[0][4] if scores else None}
+          print('CRAP4ALL_RESULT='+json.dumps(result,separators=(',',':')))
+          PY
+          python /tmp/crap4all_audit.py
