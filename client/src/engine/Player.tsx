@@ -1,9 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Controls } from '../App';
-import { performRaycast } from './raycast';
+import { performRaycast, type RaycastHit } from './raycast';
 import { BlockType, getBlockDrops, isBlockSolid } from './blocks';
 import { useGame } from '../lib/stores/useGame';
 
@@ -36,6 +36,8 @@ const Player: React.FC = () => {
     normal: THREE.Vector3;
     blockType: BlockType;
   } | null>(null);
+  const mouseButtonsRef = useRef({ mine: false, place: false });
+  const [targetBlock, setTargetBlock] = useState<RaycastHit | null>(null);
   
   const miningTimeRef = useRef(0);
   const lastMineRef = useRef(0);
@@ -47,6 +49,36 @@ const Player: React.FC = () => {
 
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button === 0) mouseButtonsRef.current.mine = true;
+      if (event.button === 2) {
+        event.preventDefault();
+        mouseButtonsRef.current.place = true;
+      }
+    };
+    const handleMouseUp = (event: MouseEvent) => {
+      if (event.button === 0) mouseButtonsRef.current.mine = false;
+      if (event.button === 2) mouseButtonsRef.current.place = false;
+    };
+    const stopContextMenu = (event: MouseEvent) => event.preventDefault();
+    const clearMouseButtons = () => {
+      mouseButtonsRef.current.mine = false;
+      mouseButtonsRef.current.place = false;
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('blur', clearMouseButtons);
+    window.addEventListener('contextmenu', stopContextMenu);
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('blur', clearMouseButtons);
+      window.removeEventListener('contextmenu', stopContextMenu);
+    };
   }, []);
 
   useEffect(() => {
@@ -136,10 +168,15 @@ const Player: React.FC = () => {
       getBlock
     );
     targetBlockRef.current = raycast;
+    setTargetBlock((previous) => {
+      if (!previous && !raycast) return previous;
+      if (previous && raycast && previous.position.equals(raycast.position)) return previous;
+      return raycast;
+    });
 
     const now = Date.now();
     
-    if (keys.mine && raycast && now - lastMineRef.current > 200) {
+    if ((keys.mine || mouseButtonsRef.current.mine) && raycast && now - lastMineRef.current > 200) {
       lastMineRef.current = now;
       
       const { x, y, z } = raycast.position;
@@ -157,7 +194,7 @@ const Player: React.FC = () => {
       drops.forEach(drop => addToInventory(drop.id, drop.count));
     }
 
-    if (keys.place && raycast && now - lastMineRef.current > 200) {
+    if ((keys.place || mouseButtonsRef.current.place) && raycast && now - lastMineRef.current > 200) {
       const selectedBlockType = inventory[selectedSlot];
       if (selectedBlockType && inventoryCounts[selectedSlot] > 0) {
         lastMineRef.current = now;
@@ -192,8 +229,8 @@ const Player: React.FC = () => {
 
   return (
     <>
-      {targetBlockRef.current && (
-        <mesh position={targetBlockRef.current.position}>
+      {targetBlock && (
+        <mesh position={targetBlock.position}>
           <boxGeometry args={[1.01, 1.01, 1.01]} />
           <meshBasicMaterial color="white" wireframe opacity={0.5} transparent />
         </mesh>
