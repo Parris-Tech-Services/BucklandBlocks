@@ -13,7 +13,9 @@ const CHUNK_SIZE = { x: 16, y: 128, z: 16 };
 const STARTING_ADDRESS = "53 Buckland Street, Epsom VIC 3551, Australia";
 const OSM_ENABLED = import.meta.env.VITE_ENABLE_OSM === "true";
 
-const World: React.FC<WorldProps> = ({ viewDistance = 2 }) => {
+// Keep the initial static-deployment workload small enough for ordinary browsers.
+// Chunks are expanded as the player moves into a new chunk.
+const World: React.FC<WorldProps> = ({ viewDistance = 1 }) => {
   const { camera, scene } = useThree();
   const [centerChunk, setCenterChunk] = useState({ x: 0, z: 0 });
   const { setChunk, getChunk } = useGame();
