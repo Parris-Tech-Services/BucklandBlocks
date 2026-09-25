@@ -1,8 +1,5 @@
 name: One-off crap4all audit
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/crap4all-oneoff-audit.yml']
   workflow_dispatch:
 permissions:
   contents: read
