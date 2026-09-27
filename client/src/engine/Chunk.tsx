@@ -13,18 +13,21 @@ export interface ChunkProps {
 
 const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
   const textures = useTexture({
-    grass: "/textures/grass.png",
-    dirt: "/textures/dirt.png",
-    stone: "/textures/stone.png",
-    wood: "/textures/wood.jpg",
-    sand: "/textures/sand.jpg",
-    sky: "/textures/sky.png",
+    grass: "./textures/grass.png",
+    dirt: "./textures/dirt.png",
+    stone: "./textures/stone.png",
+    wood: "./textures/wood.jpg",
+    sand: "./textures/sand.jpg",
+    sky: "./textures/sky.png",
   });
 
-  // crisp voxel look + correct color space
+  // crisp voxel look + correct color space.
+  // minFilter must mipmap (NearestMipmapLinear, not NearestFilter) or any
+  // minified/distant surface aliases into full-screen shimmering "static" —
+  // magFilter stays Nearest so close-up texels still look crisp/blocky.
   Object.values(textures).forEach((t) => {
     t.magFilter = THREE.NearestFilter;
-    t.minFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestMipmapLinearFilter;
     t.wrapS = THREE.RepeatWrapping;
     t.wrapT = THREE.RepeatWrapping;
     // r3f/three@0.15+ uses colorSpace

@@ -200,13 +200,19 @@ export const useGame = create<GameState>()(
       if (chunk) {
         const localX = x - chunkX * chunkSize;
         const localZ = z - chunkZ * chunkSize;
-        const localY = y;
-        
-        const index = localX + localY * chunkSize + localZ * chunkSize * 128;
-        chunk.voxelData[index] = blockType;
-        chunk.dirty = true;
-        
-        set({ chunks: new Map(state.chunks) });
+      const localY = y;
+
+      if (localX < 0 || localX >= chunkSize || localY < 0 || localY >= 128 || localZ < 0 || localZ >= chunkSize) {
+        return;
+      }
+
+      const index = localX + localY * chunkSize + localZ * chunkSize * 128;
+      const voxelData = new Uint8Array(chunk.voxelData);
+      voxelData[index] = blockType;
+
+      const chunks = new Map(state.chunks);
+      chunks.set(chunkKey, { voxelData, dirty: true });
+      set({ chunks });
       }
     },
     
@@ -222,7 +228,11 @@ export const useGame = create<GameState>()(
       if (chunk) {
         const localX = x - chunkX * chunkSize;
         const localZ = z - chunkZ * chunkSize;
-        const localY = y;
+      const localY = y;
+
+      if (localX < 0 || localX >= chunkSize || localY < 0 || localY >= 128 || localZ < 0 || localZ >= chunkSize) {
+        return BlockType.AIR;
+      }
         
         const index = localX + localY * chunkSize + localZ * chunkSize * 128;
         return chunk.voxelData[index] || BlockType.AIR;
