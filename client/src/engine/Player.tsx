@@ -158,6 +158,16 @@ const Player: React.FC = () => {
   }, [setSelectedSlot]);
 
   useEffect(() => {
+    // Three.js's default Euler order ('XYZ') applies pitch (x) around the
+    // camera's *original* X axis before yaw (y) is applied on top of it —
+    // so pitch is only really "up/down" when facing the initial direction.
+    // Turn around (yaw ~180°) and the same pitch rotation reads as visually
+    // inverted; at yaw ~90°/270° it does nothing at all. 'YXZ' applies yaw
+    // first (around the fixed world-up axis), then pitch around the
+    // resulting local X axis, which is what a first-person camera needs:
+    // pitch behaves identically no matter which way you're facing.
+    camera.rotation.order = 'YXZ';
+
     const handleMouseMove = (event: MouseEvent) => {
       if (document.pointerLockElement !== document.body) return;
 
