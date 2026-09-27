@@ -14,7 +14,7 @@ const GameHUD: React.FC = () => {
   } = useGame();
 
   // Same time-of-day display you had
-  const timeOfDay = Math.floor((gameTime / 1000) % 24);
+  const timeOfDay = Math.floor(((gameTime % 24000) / 24000) * 24);
   const isNight = timeOfDay >= 18 || timeOfDay < 6;
 
   return (
