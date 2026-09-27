@@ -1,0 +1,40 @@
+name: Buckland Blocks repair CI
+
+on:
+  push:
+    branches:
+      - fix/buckland-blocks-core-repair
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload browser build
+        uses: actions/upload-artifact@v4
+        with:
+          name: buckland-blocks-repair-build
+          path: dist/public
+          if-no-files-found: error
