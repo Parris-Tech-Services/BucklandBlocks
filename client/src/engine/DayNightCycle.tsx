@@ -6,12 +6,24 @@ import * as THREE from "three";
 const DayNightCycle: React.FC = () => {
   const dirLightRef = useRef<THREE.DirectionalLight>(null);
   const ambientLightRef = useRef<THREE.AmbientLight>(null);
+  const gameTimeRef = useRef(useGame.getState().gameTime);
+  const syncAccumulatorRef = useRef(0);
 
   useFrame((state, delta) => {
     const game = useGame.getState();
-    if (game.gameplayActive) game.updateGameTime(delta * 100);
 
-    const timeOfDay = (game.gameTime / 24000) * 24;
+    if (game.gameplayActive) {
+      gameTimeRef.current = (gameTimeRef.current + delta * 100) % 24000;
+      syncAccumulatorRef.current += delta;
+
+      if (syncAccumulatorRef.current >= 0.25) {
+        const advance = (gameTimeRef.current - game.gameTime + 24000) % 24000;
+        if (advance > 0) game.updateGameTime(advance);
+        syncAccumulatorRef.current = 0;
+      }
+    }
+
+    const timeOfDay = (gameTimeRef.current / 24000) * 24;
     const sunAngle = (timeOfDay / 24) * Math.PI * 2 - Math.PI / 2;
     const sunY = Math.sin(sunAngle) * 100;
 
