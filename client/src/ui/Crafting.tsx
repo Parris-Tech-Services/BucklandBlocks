@@ -1,203 +1,77 @@
-import React, { useState } from 'react';
-import { X } from 'lucide-react';
-import { BlockType, BLOCKS } from '../engine/blocks';
-import { useGame } from '../lib/stores/useGame';
-import recipes from '../data/recipes.json';
-
-interface CraftingProps {
-  onClose: () => void;
-}
+import React, { useMemo, useState } from "react";
+import { X } from "lucide-react";
+import { BlockType, BLOCKS } from "../engine/blocks";
+import { ItemStack, useGame } from "../lib/stores/useGame";
+import recipes from "../data/recipes.json";
 
 interface Recipe {
   id: string;
-  result: { type: BlockType; count: number };
-  ingredients: Array<{ type: BlockType; count: number }>;
-  pattern: string[];
+  name: string;
+  result: ItemStack;
+  ingredients: ItemStack[];
 }
 
-const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
-  const { inventory, inventoryCounts, selectedSlot, addToInventory, removeFromInventory } = useGame();
-  const [craftingGrid, setCraftingGrid] = useState<(BlockType | null)[]>(new Array(4).fill(null));
-  const [craftingCounts, setCraftingCounts] = useState<number[]>(new Array(4).fill(0));
-  const [craftResult, setCraftResult] = useState<{ type: BlockType; count: number } | null>(null);
+const Crafting: React.FC = () => {
+  const inventory = useGame((state) => state.inventory);
+  const inventoryCounts = useGame((state) => state.inventoryCounts);
+  const craftRecipe = useGame((state) => state.craftRecipe);
+  const setMenu = useGame((state) => state.setMenu);
+  const [message, setMessage] = useState<string | null>(null);
 
-  // Check if a recipe matches the current crafting grid
-  const findMatchingRecipe = (): Recipe | null => {
-    for (const recipe of recipes as Recipe[]) {
-      if (recipe.pattern.length === 2) {
-        let matches = true;
-        const ingredientCounts = new Map<BlockType, number>();
-        
-        for (let i = 0; i < 4; i++) {
-          const row = Math.floor(i / 2);
-          const col = i % 2;
-          const patternChar = recipe.pattern[row]?.[col];
-          const requiredType = patternChar ? recipe.ingredients.find(ing => 
-            ing.type === (patternChar === 'L' ? BlockType.WOOD_LOG : 
-                         patternChar === 'P' ? BlockType.WOOD_PLANK :
-                         patternChar === 'S' ? BlockType.STONE :
-                         patternChar === 'C' ? BlockType.COBBLESTONE : BlockType.AIR)
-          )?.type : null;
-          
-          if (craftingGrid[i] !== requiredType) {
-            matches = false;
-            break;
-          }
-          
-          if (requiredType) {
-            ingredientCounts.set(requiredType, (ingredientCounts.get(requiredType) || 0) + (craftingCounts[i] || 0));
-          }
-        }
-        
-        if (matches) {
-          for (const ingredient of recipe.ingredients) {
-            const availableCount = ingredientCounts.get(ingredient.type) || 0;
-            if (availableCount < ingredient.count) {
-              matches = false;
-              break;
-            }
-          }
-        }
-        
-        if (matches) return recipe;
-      }
-    }
-    return null;
-  };
+  const available = useMemo(() => {
+    const counts = new Map<BlockType, number>();
+    inventory.forEach((item, index) => {
+      if (item !== null) counts.set(item, (counts.get(item) ?? 0) + inventoryCounts[index]);
+    });
+    return counts;
+  }, [inventory, inventoryCounts]);
 
-  // Update craft result when grid changes
-  React.useEffect(() => {
-    const recipe = findMatchingRecipe();
-    setCraftResult(recipe ? recipe.result : null);
-  }, [craftingGrid, craftingCounts]);
+  const canCraft = (recipe: Recipe) => recipe.ingredients.every(
+    (ingredient) => (available.get(ingredient.type) ?? 0) >= ingredient.count,
+  );
 
-  const handleCraftingSlotClick = (slotIndex: number) => {
-    const selectedBlockType = inventory[selectedSlot];
-    if (selectedBlockType && inventoryCounts[selectedSlot] > 0) {
-      const newGrid = [...craftingGrid];
-      const newCounts = [...craftingCounts];
-      
-      if (newGrid[slotIndex] === selectedBlockType) {
-        newCounts[slotIndex]++;
-      } else {
-        newGrid[slotIndex] = selectedBlockType;
-        newCounts[slotIndex] = 1;
-      }
-      
-      removeFromInventory(selectedSlot, 1);
-      setCraftingGrid(newGrid);
-      setCraftingCounts(newCounts);
-    }
-  };
-
-  const handleCraftButtonClick = () => {
-    if (craftResult) {
-      const recipe = findMatchingRecipe();
-      if (!recipe) return;
-      
-      recipe.ingredients.forEach(ingredient => {
-        for (let i = 0; i < 4; i++) {
-          if (craftingGrid[i] === ingredient.type && craftingCounts[i] >= ingredient.count) {
-            const newCounts = [...craftingCounts];
-            newCounts[i] -= ingredient.count;
-            if (newCounts[i] <= 0) {
-              const newGrid = [...craftingGrid];
-              newGrid[i] = null;
-              newCounts[i] = 0;
-              setCraftingGrid(newGrid);
-            }
-            setCraftingCounts(newCounts);
-            break;
-          }
-        }
-      });
-      
-      addToInventory(craftResult.type, craftResult.count);
-    }
-  };
-
-  const renderCraftingSlot = (slotIndex: number) => {
-    const blockType = craftingGrid[slotIndex];
-    const count = craftingCounts[slotIndex];
-    
-    return (
-      <div
-        key={slotIndex}
-        className="w-12 h-12 border-2 border-gray-400 bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600"
-        onClick={() => handleCraftingSlotClick(slotIndex)}
-      >
-        {blockType !== null && blockType !== BlockType.AIR && (
-          <>
-            <div className="text-white text-[8px] font-bold text-center">
-              {BLOCKS[blockType].name.slice(0, 4)}
-            </div>
-            {count > 0 && (
-              <div className="text-white text-[10px]">{count}</div>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  const renderResultSlot = () => {
-    if (!craftResult) return <div className="w-12 h-12 border-2 border-gray-400 bg-gray-700" />;
-    
-    return (
-      <div
-        className="w-12 h-12 border-2 border-yellow-400 bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600"
-        onClick={handleCraftButtonClick}
-      >
-        <div className="text-white text-[8px] font-bold text-center">
-          {BLOCKS[craftResult.type].name.slice(0, 4)}
-        </div>
-        <div className="text-white text-[10px]">{craftResult.count}</div>
-      </div>
-    );
+  const handleCraft = (recipe: Recipe) => {
+    const crafted = craftRecipe(recipe.ingredients, recipe.result);
+    setMessage(crafted ? `Crafted ${recipe.result.count} × ${BLOCKS[recipe.result.type].name}.` : "Not enough ingredients, or there is no room for the result.");
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border-2 border-gray-400 p-4 rounded-lg">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 border-2 border-gray-400 p-4 rounded-lg w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-white text-lg font-bold">Crafting</h2>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-gray-300"
-          >
-            <X size={20} />
-          </button>
+          <button onClick={() => setMenu("none")} className="text-white hover:text-gray-300" aria-label="Close crafting"><X size={20} /></button>
         </div>
 
-        <div className="flex items-center space-x-4 mb-4">
-          {/* 2x2 Crafting Grid */}
-          <div className="grid grid-cols-2 gap-1">
-            {Array.from({ length: 4 }, (_, i) => renderCraftingSlot(i))}
-          </div>
-
-          {/* Arrow */}
-          <div className="text-white text-2xl">→</div>
-
-          {/* Result Slot */}
-          {renderResultSlot()}
-        </div>
-
-        {/* Recipe List */}
-        <div className="border-t border-gray-600 pt-4">
-          <h3 className="text-white font-bold mb-2">Available Recipes:</h3>
-          <div className="text-gray-300 text-sm space-y-1 max-h-32 overflow-y-auto">
-            {(recipes as Recipe[]).map((recipe, index) => (
-              <div key={index} className="flex justify-between">
-                <span>{BLOCKS[recipe.result.type].name}</span>
-                <span>({recipe.result.count}x)</span>
+        <div className="space-y-3">
+          {(recipes as Recipe[]).map((recipe) => {
+            const enabled = canCraft(recipe);
+            return (
+              <div key={recipe.id} className="rounded border border-gray-600 bg-gray-900/60 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-white font-semibold">{recipe.name}</div>
+                    <div className="text-xs text-gray-300 mt-1">
+                      {recipe.ingredients.map((ingredient) => `${ingredient.count} × ${BLOCKS[ingredient.type].name}`).join(" + ")}
+                      {" → "}{recipe.result.count} × {BLOCKS[recipe.result.type].name}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => handleCraft(recipe)}
+                    className="px-3 py-2 rounded bg-emerald-700 hover:bg-emerald-600 disabled:bg-gray-700 disabled:text-gray-500 text-white"
+                  >
+                    Craft
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        <div className="mt-4 text-center text-gray-400 text-sm">
-          Press C to close
-        </div>
+        {message && <div className="mt-4 text-sm text-center text-gray-200">{message}</div>}
+        <div className="mt-4 text-center text-gray-400 text-xs">Crafting consumes exact ingredient counts across all inventory slots.</div>
       </div>
     </div>
   );
