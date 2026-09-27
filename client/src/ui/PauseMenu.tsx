@@ -1,151 +1,54 @@
-import React from 'react';
-import { Play, Settings, Save, FolderOpen, Trash2, Home } from 'lucide-react';
-import { useGame } from '../lib/stores/useGame';
-import { useThree } from '@react-three/fiber';
+import React, { useState } from "react";
+import { FolderOpen, Home, Play, Save, Settings, Trash2 } from "lucide-react";
+import { useGame } from "../lib/stores/useGame";
 
-interface PauseMenuProps {
-  onClose: () => void;
-}
+const SAVE_KEY = "buckland_blocks_save";
 
-const PauseMenu: React.FC<PauseMenuProps> = ({ onClose }) => {
-  const { camera } = useThree();
-  const {
-    chunks,
-    inventory,
-    inventoryCounts,
-    selectedSlot,
-    gameTime,
-  } = useGame();
-
-  const handleResume = () => {
-    onClose();
-  };
+const PauseMenu: React.FC = () => {
+  const setMenu = useGame((state) => state.setMenu);
+  const saveGame = useGame((state) => state.saveGame);
+  const hasSavedGame = useGame((state) => state.hasSavedGame);
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleSave = () => {
-    try {
-      const saveData = {
-        playerPosition: {
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z,
-        },
-        playerRotation: {
-          x: camera.rotation.x,
-          y: camera.rotation.y,
-        },
-        inventory: [...inventory],
-        inventoryCounts: [...inventoryCounts],
-        selectedSlot,
-        gameTime,
-        chunks: Array.from(chunks.entries()).map(([key, data]) => ({
-          key,
-          voxelData: Array.from(data.voxelData),
-        })),
-        timestamp: Date.now(),
-      };
-      
-      localStorage.setItem('buckland_blocks_save', JSON.stringify(saveData));
-      console.log('World saved successfully!');
-      onClose();
-    } catch (error) {
-      console.error('Failed to save world:', error);
-      alert('Failed to save world');
-    }
-  };
-
-  const handleLoad = () => {
-    try {
-      const savedData = localStorage.getItem('buckland_blocks_save');
-      if (savedData) {
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to load world:', error);
-      alert('Failed to load world');
-    }
+    const saved = saveGame();
+    setMessage(saved ? "World saved." : "Save failed. Your existing save was left untouched.");
   };
 
   const handleNewWorld = () => {
-    if (window.confirm('This will delete your current world. Are you sure?')) {
-      localStorage.removeItem('buckland_blocks_save');
-      window.location.reload();
-    }
-  };
-
-  const handleSettings = () => {
-    console.log('Opening settings...');
-  };
-
-  const handleMainMenu = () => {
-    console.log('Returning to main menu...');
-  };
-
-  const hasSave = () => {
-    return localStorage.getItem('buckland_blocks_save') !== null;
+    if (!window.confirm("Start a new world? This deletes the current local save.")) return;
+    localStorage.removeItem(SAVE_KEY);
+    window.location.reload();
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border-2 border-gray-400 p-6 rounded-lg min-w-[300px]">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 border-2 border-gray-400 p-6 rounded-lg w-full max-w-sm">
         <h2 className="text-white text-2xl font-bold text-center mb-6">Buckland Blocks</h2>
-        
         <div className="space-y-3">
-          <button
-            onClick={handleResume}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Play size={20} />
-            <span>Resume Game</span>
+          <button onClick={() => setMenu("none")} className="w-full flex items-center gap-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded">
+            <Play size={20} /> <span>Resume Game</span>
           </button>
-
-          <button
-            onClick={handleSave}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Save size={20} />
-            <span>Save World</span>
+          <button onClick={handleSave} className="w-full flex items-center gap-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded">
+            <Save size={20} /> <span>Save World</span>
           </button>
-
-          {hasSave() && (
-            <button
-              onClick={handleLoad}
-              className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-            >
-              <FolderOpen size={20} />
-              <span>Load World</span>
+          {hasSavedGame && (
+            <button onClick={() => window.location.reload()} className="w-full flex items-center gap-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded">
+              <FolderOpen size={20} /> <span>Load Saved World</span>
             </button>
           )}
-
-          <button
-            onClick={handleSettings}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Settings size={20} />
-            <span>Settings</span>
+          <button disabled title="Settings are not implemented yet" className="w-full flex items-center gap-3 px-4 py-3 bg-gray-700/50 text-gray-400 rounded cursor-not-allowed">
+            <Settings size={20} /> <span>Settings (coming later)</span>
           </button>
-
-          <button
-            onClick={handleNewWorld}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-          >
-            <Trash2 size={20} />
-            <span>New World</span>
+          <button onClick={handleNewWorld} className="w-full flex items-center gap-3 px-4 py-3 bg-red-700 hover:bg-red-600 text-white rounded">
+            <Trash2 size={20} /> <span>New World</span>
           </button>
-
-          <button
-            onClick={handleMainMenu}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Home size={20} />
-            <span>Main Menu</span>
+          <button disabled title="There is no separate main menu yet" className="w-full flex items-center gap-3 px-4 py-3 bg-gray-700/50 text-gray-400 rounded cursor-not-allowed">
+            <Home size={20} /> <span>Main Menu (coming later)</span>
           </button>
         </div>
-
-        <div className="mt-6 text-center text-gray-400 text-sm">
-          <div>Press ESC to resume</div>
-          <div className="mt-2">Buckland Blocks v1.0</div>
-          <div className="text-xs">MIT Licensed - IP Safe</div>
-        </div>
+        {message && <div className="mt-4 text-center text-sm text-slate-200">{message}</div>}
+        <div className="mt-5 text-center text-gray-400 text-sm">Press ESC to resume</div>
       </div>
     </div>
   );
