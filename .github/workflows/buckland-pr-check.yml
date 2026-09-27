@@ -1,8 +1,6 @@
 name: Buckland Blocks branch verification
 
 on:
-  push:
-    branches: [codex/buckland-controls]
   workflow_dispatch:
 
 permissions:
