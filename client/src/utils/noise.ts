@@ -1,26 +1,43 @@
-import { BlockType } from '../engine/blocks';
+import { BlockType } from "../engine/blocks";
 
-// Simple noise function (pseudo-random based on coordinates)
-function noise(x: number, z: number, seed: number = 12345): number {
-  const n = Math.sin(x * 12.9898 + z * 78.233 + seed) * 43758.5453;
-  return n - Math.floor(n);
+function hash2D(x: number, z: number, seed = 12345): number {
+  let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 69069);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
 }
 
-// Octave noise for more natural terrain
-function octaveNoise(x: number, z: number, octaves: number = 4): number {
-  let value = 0;
-  let amplitude = 1;
-  let frequency = 1;
-  let maxValue = 0;
+function fade(t: number): number {
+  return t * t * (3 - 2 * t);
+}
 
-  for (let i = 0; i < octaves; i++) {
-    value += noise(x * frequency, z * frequency) * amplitude;
-    maxValue += amplitude;
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function valueNoise(x: number, z: number, seed = 12345): number {
+  const x0 = Math.floor(x);
+  const z0 = Math.floor(z);
+  const tx = fade(x - x0);
+  const tz = fade(z - z0);
+  const a = hash2D(x0, z0, seed);
+  const b = hash2D(x0 + 1, z0, seed);
+  const c = hash2D(x0, z0 + 1, seed);
+  const d = hash2D(x0 + 1, z0 + 1, seed);
+  return lerp(lerp(a, b, tx), lerp(c, d, tx), tz);
+}
+
+function fbm(x: number, z: number, octaves = 4): number {
+  let value = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+  let totalAmplitude = 0;
+  for (let i = 0; i < octaves; i += 1) {
+    value += valueNoise(x * frequency, z * frequency, 12345 + i * 1013) * amplitude;
+    totalAmplitude += amplitude;
     amplitude *= 0.5;
     frequency *= 2;
   }
-
-  return value / maxValue;
+  return value / totalAmplitude;
 }
 
 export function generateChunkTerrain(
@@ -29,94 +46,50 @@ export function generateChunkTerrain(
   chunkZ: number,
   sizeX: number,
   sizeY: number,
-  sizeZ: number
+  sizeZ: number,
 ): Uint8Array {
   const voxelData = new Uint8Array(sizeX * sizeY * sizeZ);
-  
-  const baseHeight = 64;
-  const heightVariation = 16;
-  const hilliness = 0.02; // Controls how hilly the terrain is
-  
-  for (let x = 0; x < sizeX; x++) {
-    for (let z = 0; z < sizeZ; z++) {
+  const baseHeight = 63;
+
+  for (let x = 0; x < sizeX; x += 1) {
+    for (let z = 0; z < sizeZ; z += 1) {
       const worldX = chunkX + x;
       const worldZ = chunkZ + z;
-      
-      // Combine different noise frequencies for more natural terrain
-      // Cache octave noise values for this (x, z) column
-      const octaveNoiseLarge = octaveNoise(worldX * hilliness * 0.5, worldZ * hilliness * 0.5, 4);
-      const octaveNoiseSmall = octaveNoise(worldX * hilliness * 2, worldZ * hilliness * 2, 2);
-      const combinedNoise = octaveNoiseLarge * 0.7 + octaveNoiseSmall * 0.3;
-      
-      const terrainHeight = baseHeight + Math.floor(combinedNoise * heightVariation);
-      
-      for (let y = 0; y < sizeY; y++) {
+      const broad = fbm(worldX * 0.018, worldZ * 0.018, 4);
+      const detail = fbm(worldX * 0.055, worldZ * 0.055, 2);
+      const terrainHeight = Math.max(48, Math.min(86, Math.floor(baseHeight + (broad - 0.5) * 18 + (detail - 0.5) * 5)));
+
+      for (let y = 0; y < sizeY; y += 1) {
         const worldY = chunkY + y;
         const voxelIndex = x + y * sizeX + z * sizeX * sizeY;
-        
-        if (worldY < terrainHeight - 4) {
-          // Deep underground - stone
-          voxelData[voxelIndex] = BlockType.STONE;
-        } else if (worldY < terrainHeight - 1) {
-          // Shallow underground - dirt
-          voxelData[voxelIndex] = BlockType.DIRT;
-        } else if (worldY === terrainHeight - 1) {
-          // Surface layer - mix of blocks based on height and noise
-          const surfaceNoise = noise(worldX * 0.1, worldZ * 0.1);
-          
-          if (terrainHeight > baseHeight + 8) {
-            // Higher elevations - stone and dirt mix
-            voxelData[voxelIndex] = surfaceNoise > 0.6 ? BlockType.STONE : BlockType.DIRT;
-          } else if (terrainHeight < baseHeight - 4) {
-            // Lower elevations - sand
-            voxelData[voxelIndex] = BlockType.SAND;
-          } else {
-            // Normal elevation - grass
-            voxelData[voxelIndex] = BlockType.GRASS;
-          }
-        } else {
-          // Air
-          voxelData[voxelIndex] = BlockType.AIR;
-        }
+        if (worldY < terrainHeight - 4) voxelData[voxelIndex] = BlockType.STONE;
+        else if (worldY < terrainHeight - 1) voxelData[voxelIndex] = BlockType.DIRT;
+        else if (worldY === terrainHeight - 1) voxelData[voxelIndex] = BlockType.GRASS;
       }
-      
-      // Add some trees randomly
-      if (noise(worldX, worldZ, 54321) > 0.8) {
-        const treeHeight = 4 + Math.floor(noise(worldX, worldZ, 98765) * 3);
-        for (let treeY = 0; treeY < treeHeight; treeY++) {
-          const y = terrainHeight + treeY;
-          if (y < chunkY + sizeY) {
-            const voxelIndex = x + (y - chunkY) * sizeX + z * sizeX * sizeY;
-            if (voxelIndex >= 0 && voxelIndex < voxelData.length) {
-              voxelData[voxelIndex] = BlockType.WOOD_LOG;
-            }
+
+      const treeRoll = hash2D(worldX, worldZ, 54321);
+      if (treeRoll > 0.985 && x >= 2 && x < sizeX - 2 && z >= 2 && z < sizeZ - 2) {
+        const trunkHeight = 4 + Math.floor(hash2D(worldX, worldZ, 98765) * 3);
+        for (let dy = 0; dy < trunkHeight; dy += 1) {
+          const y = terrainHeight + dy;
+          if (y >= chunkY && y < chunkY + sizeY) {
+            voxelData[x + (y - chunkY) * sizeX + z * sizeX * sizeY] = BlockType.WOOD_LOG;
           }
         }
-        
-        // Add leaves
-        for (let leafY = -2; leafY <= 2; leafY++) {
-          for (let leafX = -2; leafX <= 2; leafX++) {
-            for (let leafZ = -2; leafZ <= 2; leafZ++) {
-              if (Math.abs(leafX) + Math.abs(leafY) + Math.abs(leafZ) <= 3) {
-                const y = terrainHeight + treeHeight + leafY;
-                const leafWorldX = x + leafX;
-                const leafWorldZ = z + leafZ;
-                
-                if (leafWorldX >= 0 && leafWorldX < sizeX && 
-                    leafWorldZ >= 0 && leafWorldZ < sizeZ &&
-                    y >= chunkY && y < chunkY + sizeY) {
-                  const voxelIndex = leafWorldX + (y - chunkY) * sizeX + leafWorldZ * sizeX * sizeY;
-                  if (voxelIndex >= 0 && voxelIndex < voxelData.length) {
-                    voxelData[voxelIndex] = BlockType.LEAF;
-                  }
-                }
-              }
+        for (let dy = -2; dy <= 2; dy += 1) {
+          for (let dx = -2; dx <= 2; dx += 1) {
+            for (let dz = -2; dz <= 2; dz += 1) {
+              if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 3) continue;
+              const y = terrainHeight + trunkHeight + dy;
+              if (y < chunkY || y >= chunkY + sizeY) continue;
+              const index = (x + dx) + (y - chunkY) * sizeX + (z + dz) * sizeX * sizeY;
+              if (voxelData[index] === BlockType.AIR) voxelData[index] = BlockType.LEAF;
             }
           }
         }
       }
     }
   }
-  
+
   return voxelData;
 }
