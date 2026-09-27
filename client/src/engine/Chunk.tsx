@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { useTexture } from "@react-three/drei";
 import { createBlockMesh } from "./mesher";
@@ -21,55 +21,70 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
     sky: "/textures/sky.png",
   });
 
-  // crisp voxel look + correct color space
-  Object.values(textures).forEach((t) => {
-    t.magFilter = THREE.NearestFilter;
-    t.minFilter = THREE.NearestFilter;
-    t.wrapS = THREE.RepeatWrapping;
-    t.wrapT = THREE.RepeatWrapping;
-    // r3f/three@0.15+ uses colorSpace
-    (t as any).colorSpace = THREE.SRGBColorSpace;
+  Object.values(textures).forEach((texture) => {
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
   });
 
-  const chunks = useGame((s) => s.chunks);
   const chunkKey = `${chunkX},${chunkZ}`;
-  const chunkData = chunks.get(chunkKey);
-  const voxelData = chunkData?.voxelData;
+  const chunkData = useGame((state) => state.chunks.get(chunkKey));
+  const getBlock = useGame((state) => state.getBlock);
 
-  if (!voxelData) return null;
-
-  const { geometry, materials } = useMemo(() => {
-  const geo = createBlockMesh(voxelData, size);
-    // normals for proper lighting
-    geo.computeVertexNormals();
-
-    const mats: THREE.Material[] = [
-      new THREE.MeshStandardMaterial({ map: textures.dirt, roughness: 0.9, metalness: 0 }),
-      new THREE.MeshStandardMaterial({ map: textures.grass, roughness: 0.8, metalness: 0 }),
-      new THREE.MeshStandardMaterial({ map: textures.stone, roughness: 0.7, metalness: 0.1 }),
-      new THREE.MeshStandardMaterial({ map: textures.wood, roughness: 0.8, metalness: 0 }),
-      new THREE.MeshStandardMaterial({ map: textures.sand, roughness: 0.9, metalness: 0 }),
+  const materials = useMemo<THREE.Material[]>(
+    () => [
+      new THREE.MeshStandardMaterial({ map: textures.dirt, roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ map: textures.grass, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ map: textures.stone, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ map: textures.wood, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ map: textures.sand, roughness: 0.95 }),
       new THREE.MeshStandardMaterial({
         map: textures.sky,
-        roughness: 0.1,
-        metalness: 0,
+        roughness: 0.5,
         transparent: true,
-        opacity: 0.8,
-        side: THREE.DoubleSide
+        opacity: 0.78,
+        side: THREE.DoubleSide,
+        depthWrite: false,
       }),
-    ];
+    ],
+    [textures.dirt, textures.grass, textures.sand, textures.sky, textures.stone, textures.wood],
+  );
 
-    if (chunkData?.dirty) chunkData.dirty = false;
-    return { geometry: geo, materials: mats };
-  }, [voxelData, size, textures.grass, textures.wood, textures.sand, textures.sky, chunkData]);
+  const geometry = useMemo(() => {
+    if (!chunkData) return null;
+
+    return createBlockMesh(
+      chunkData.voxelData,
+      size,
+      (localX, y, localZ) =>
+        getBlock(chunkX * size.x + localX, y, chunkZ * size.z + localZ),
+    );
+  }, [chunkData?.voxelData, chunkData?.revision, chunkX, chunkZ, getBlock, size]);
+
+  useEffect(
+    () => () => {
+      geometry?.dispose();
+    },
+    [geometry],
+  );
+
+  useEffect(
+    () => () => {
+      materials.forEach((material) => material.dispose());
+    },
+    [materials],
+  );
+
+  if (!chunkData || !geometry) return null;
 
   return (
     <mesh
       position={position}
       geometry={geometry}
-      // IMPORTANT: pass the whole array so geometry.groups use the right material index
       material={materials}
-      // turn shadows OFF for perf for now
+      frustumCulled
       castShadow={false}
       receiveShadow={false}
     />
