@@ -1,154 +1,98 @@
-import React from 'react';
-import { Play, Settings, Save, FolderOpen, Trash2, Home } from 'lucide-react';
-import { useGame } from '../lib/stores/useGame';
-import { useThree } from '@react-three/fiber';
+import { useState } from "react";
+import { Play, Save, FolderOpen, Trash2 } from "lucide-react";
+import { useGame } from "../lib/stores/useGame";
+import { deleteSave, loadWorld, readSaveStatus, saveWorld } from "../engine/save";
 
 interface PauseMenuProps {
-  onClose: () => void;
+  onResume: () => void;
 }
 
-const PauseMenu: React.FC<PauseMenuProps> = ({ onClose }) => {
-  const { camera } = useThree();
-  const {
-    chunks,
-    inventory,
-    inventoryCounts,
-    selectedSlot,
-    gameTime,
-  } = useGame();
-
-  const handleResume = () => {
-    onClose();
-  };
+export default function PauseMenu({ onResume }: PauseMenuProps) {
+  const [notice, setNotice] = useState("");
+  const [confirmLoad, setConfirmLoad] = useState(false);
+  const [confirmNewWorld, setConfirmNewWorld] = useState(false);
+  const state = useGame();
+  const saveStatus = readSaveStatus();
 
   const handleSave = () => {
-    try {
-      const saveData = {
-        playerPosition: {
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z,
-        },
-        playerRotation: {
-          x: camera.rotation.x,
-          y: camera.rotation.y,
-        },
-        inventory: [...inventory],
-        inventoryCounts: [...inventoryCounts],
-        selectedSlot,
-        gameTime,
-        chunks: Array.from(chunks.entries()).map(([key, data]) => ({
-          key,
-          voxelData: Array.from(data.voxelData),
-        })),
-        timestamp: Date.now(),
-      };
-      
-      localStorage.setItem('buckland_blocks_save', JSON.stringify(saveData));
-      console.log('World saved successfully!');
-      onClose();
-    } catch (error) {
-      console.error('Failed to save world:', error);
-      alert('Failed to save world');
-    }
+    const result = saveWorld({
+      version: 2,
+      seed: "procedural-v1",
+      chunks: Array.from(state.chunks, ([key, chunk]) => ({
+        key,
+        voxelData: Array.from(chunk.voxelData),
+      })),
+      inventory: [...state.inventory],
+      inventoryCounts: [...state.inventoryCounts],
+      selectedSlot: state.selectedSlot,
+      playerPosition: { x: state.playerPosition.x, y: state.playerPosition.y, z: state.playerPosition.z },
+      playerRotation: { x: state.playerRotation.x, y: state.playerRotation.y },
+      gameTime: state.gameTime,
+      timestamp: Date.now(),
+    });
+    setNotice(result.ok ? "World saved on this device." : `Could not save: ${result.error}`);
   };
 
   const handleLoad = () => {
-    try {
-      const savedData = localStorage.getItem('buckland_blocks_save');
-      if (savedData) {
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to load world:', error);
-      alert('Failed to load world');
+    const save = loadWorld();
+    if (!save) {
+      setNotice("The saved world is invalid or unavailable. Its data was kept unchanged.");
+      return;
     }
+    state.restoreWorld(save);
+    setNotice("");
+    setConfirmLoad(false);
+    onResume();
   };
 
   const handleNewWorld = () => {
-    if (window.confirm('This will delete your current world. Are you sure?')) {
-      localStorage.removeItem('buckland_blocks_save');
-      window.location.reload();
+    const result = deleteSave();
+    if (!result.ok) {
+      setNotice(`Could not remove the old save: ${result.error}`);
+      return;
     }
-  };
-
-  const handleSettings = () => {
-    console.log('Opening settings...');
-  };
-
-  const handleMainMenu = () => {
-    console.log('Returning to main menu...');
-  };
-
-  const hasSave = () => {
-    return localStorage.getItem('buckland_blocks_save') !== null;
+    window.location.reload();
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border-2 border-gray-400 p-6 rounded-lg min-w-[300px]">
-        <h2 className="text-white text-2xl font-bold text-center mb-6">Buckland Blocks</h2>
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/75 p-3" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <section className="my-auto w-full max-w-sm rounded-lg border-2 border-gray-400 bg-gray-800 p-5 text-white shadow-xl">
+        <h2 id="pause-title" className="mb-5 text-center text-2xl font-bold">Buckland Blocks</h2>
         <div className="space-y-3">
-          <button
-            onClick={handleResume}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Play size={20} />
-            <span>Resume Game</span>
+          <button onClick={onResume} className="flex w-full items-center gap-3 rounded bg-gray-700 px-4 py-3 hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+            <Play size={20} /><span>Resume Game</span>
           </button>
-
-          <button
-            onClick={handleSave}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Save size={20} />
-            <span>Save World</span>
+          <button onClick={handleSave} className="flex w-full items-center gap-3 rounded bg-gray-700 px-4 py-3 hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+            <Save size={20} /><span>Save World</span>
           </button>
-
-          {hasSave() && (
-            <button
-              onClick={handleLoad}
-              className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-            >
-              <FolderOpen size={20} />
-              <span>Load World</span>
+          {saveStatus.exists && saveStatus.valid && !confirmLoad && (
+            <button onClick={() => setConfirmLoad(true)} className="flex w-full items-center gap-3 rounded bg-gray-700 px-4 py-3 hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+              <FolderOpen size={20} /><span>Load saved world…</span>
             </button>
           )}
-
-          <button
-            onClick={handleSettings}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Settings size={20} />
-            <span>Settings</span>
-          </button>
-
-          <button
-            onClick={handleNewWorld}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-          >
-            <Trash2 size={20} />
-            <span>New World</span>
-          </button>
-
-          <button
-            onClick={handleMainMenu}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Home size={20} />
-            <span>Main Menu</span>
-          </button>
+          {confirmLoad && <div className="rounded border border-amber-400 p-3 text-sm" role="alert">
+            Loading replaces the current unsaved world.
+            <div className="mt-3 flex gap-2">
+              <button onClick={handleLoad} className="rounded bg-amber-700 px-3 py-2 hover:bg-amber-600">Confirm load</button>
+              <button onClick={() => setConfirmLoad(false)} className="rounded bg-gray-700 px-3 py-2 hover:bg-gray-600">Cancel</button>
+            </div>
+          </div>}
+          {saveStatus.exists && !saveStatus.valid && <p className="rounded border border-amber-400 p-3 text-sm" role="status">A saved world could not be validated ({saveStatus.message}). It has not been deleted.</p>}
+          {!confirmNewWorld ? (
+            <button onClick={() => setConfirmNewWorld(true)} className="flex w-full items-center gap-3 rounded bg-red-800 px-4 py-3 hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+              <Trash2 size={20} /><span>Start New World…</span>
+            </button>
+          ) : <div className="rounded border border-red-400 p-3 text-sm" role="alert">
+            This permanently removes the saved world on this device.
+            <div className="mt-3 flex gap-2">
+              <button onClick={handleNewWorld} className="rounded bg-red-800 px-3 py-2 hover:bg-red-700">Delete save and restart</button>
+              <button onClick={() => setConfirmNewWorld(false)} className="rounded bg-gray-700 px-3 py-2 hover:bg-gray-600">Cancel</button>
+            </div>
+          </div>}
         </div>
-
-        <div className="mt-6 text-center text-gray-400 text-sm">
-          <div>Press ESC to resume</div>
-          <div className="mt-2">Buckland Blocks v1.0</div>
-          <div className="text-xs">MIT Licensed - IP Safe</div>
-        </div>
-      </div>
+        {notice && <p className="mt-4 rounded border border-amber-400 p-3 text-sm" role="status">{notice}</p>}
+        <p className="mt-5 text-center text-sm text-gray-300">Press Escape to resume</p>
+      </section>
     </div>
   );
-};
-
-export default PauseMenu;
+}

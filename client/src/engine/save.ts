@@ -1,112 +1,142 @@
-import { BlockType } from './blocks';
+import { BlockType } from "./blocks";
 
-export interface ChunkData {
-  x: number;
-  z: number;
-  voxelData: Uint8Array;
-  timestamp: number;
-}
+export const SAVE_KEY = "buckland_blocks_save";
+export const SAVE_VERSION = 2;
+export const CHUNK_SIZE = 16;
+export const CHUNK_HEIGHT = 128;
+export const MAX_SAVED_CHUNKS = 256;
 
-export interface InventoryData {
-  slots: (BlockType | null)[];
-  counts: number[];
-  selectedSlot: number;
+export interface SavedChunk {
+  key: string;
+  voxelData: number[];
 }
 
 export interface WorldSave {
-  chunks: ChunkData[];
-  inventory: InventoryData;
+  version: typeof SAVE_VERSION;
+  seed: "procedural-v1";
+  chunks: SavedChunk[];
+  inventory: (BlockType | null)[];
+  inventoryCounts: number[];
+  selectedSlot: number;
   playerPosition: { x: number; y: number; z: number };
   playerRotation: { x: number; y: number };
   gameTime: number;
+  timestamp: number;
 }
 
-const SAVE_KEY = 'buckland_blocks_save';
+export type SaveResult = { ok: true } | { ok: false; error: string };
 
-export function saveWorld(worldData: WorldSave): void {
+const finite = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+const validPosition = (value: any): value is { x: number; y: number; z: number } =>
+  value && finite(value.x) && finite(value.y) && finite(value.z) &&
+  Math.abs(value.x) <= 1_000_000 && Math.abs(value.z) <= 1_000_000 &&
+  value.y >= -100 && value.y <= CHUNK_HEIGHT + 100;
+
+const validRotation = (value: any): value is { x: number; y: number } =>
+  value && finite(value.x) && finite(value.y) &&
+  Math.abs(value.x) <= Math.PI / 2 + 0.01 && Math.abs(value.y) <= Math.PI * 1000;
+
+const validInventory = (items: any, counts: any): boolean =>
+  Array.isArray(items) && items.length === 36 && Array.isArray(counts) && counts.length === 36 &&
+  items.every((item) => item === null || (Number.isInteger(item) && item >= 0 && item <= BlockType.SKY)) &&
+  counts.every((count) => Number.isInteger(count) && count >= 0 && count <= 9999);
+
+const validChunk = (chunk: any): chunk is SavedChunk =>
+  chunk && typeof chunk.key === "string" && /^-?\d+,-?\d+$/.test(chunk.key) &&
+  Array.isArray(chunk.voxelData) && chunk.voxelData.length === CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT &&
+  chunk.voxelData.every((value: unknown) => Number.isInteger(value) && value >= 0 && value <= BlockType.SKY);
+
+function migrate(raw: any): WorldSave {
+  const chunks = Array.isArray(raw.chunks)
+    ? raw.chunks.map((chunk: any) => ({
+        key: chunk.key ?? `${chunk.x},${chunk.z}`,
+        voxelData: Array.from(chunk.voxelData ?? []),
+      }))
+    : [];
+  const inventory = Array.isArray(raw.inventory) ? raw.inventory : raw.inventory?.slots;
+  const inventoryCounts = Array.isArray(raw.inventoryCounts) ? raw.inventoryCounts : raw.inventory?.counts;
+
+  return {
+    version: SAVE_VERSION,
+    seed: "procedural-v1",
+    chunks,
+    inventory: inventory ?? new Array(36).fill(null),
+    inventoryCounts: inventoryCounts ?? new Array(36).fill(0),
+    selectedSlot: raw.selectedSlot ?? raw.inventory?.selectedSlot ?? 0,
+    playerPosition: raw.playerPosition,
+    playerRotation: raw.playerRotation,
+    gameTime: raw.gameTime ?? 0,
+    timestamp: raw.timestamp ?? Date.now(),
+  };
+}
+
+export function validateWorldSave(raw: unknown): WorldSave {
+  const save = migrate(raw as any);
+  if (!validPosition(save.playerPosition)) throw new Error("player position is invalid");
+  if (!validRotation(save.playerRotation)) throw new Error("player rotation is invalid");
+  if (!validInventory(save.inventory, save.inventoryCounts)) throw new Error("inventory is invalid");
+  if (!Number.isInteger(save.selectedSlot) || save.selectedSlot < 0 || save.selectedSlot > 8) {
+    throw new Error("selected hotbar slot is invalid");
+  }
+  if (!finite(save.gameTime) || save.gameTime < 0 || save.gameTime >= 24000) throw new Error("game time is invalid");
+  if (!Array.isArray(save.chunks) || save.chunks.length > MAX_SAVED_CHUNKS || !save.chunks.every(validChunk)) {
+    throw new Error("world chunks are invalid or exceed the save limit");
+  }
+  return save;
+}
+
+export function saveWorld(worldData: WorldSave): SaveResult {
   try {
-    const serializedData = JSON.stringify({
-      ...worldData,
-      chunks: worldData.chunks.map(chunk => ({
-        ...chunk,
-        voxelData: Array.from(chunk.voxelData), // Convert Uint8Array to regular array for JSON
-      })),
-    });
-    localStorage.setItem(SAVE_KEY, serializedData);
-    console.log('World saved successfully');
+    const save = validateWorldSave(worldData);
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    return { ok: true };
   } catch (error) {
-    console.error('Failed to save world:', error);
+    const message = error instanceof Error ? error.message : "storage write failed";
+    console.error("Failed to save world:", error);
+    return { ok: false, error: message };
   }
 }
 
 export function loadWorld(): WorldSave | null {
   try {
-    const savedData = localStorage.getItem(SAVE_KEY);
-    if (!savedData) return null;
-
-    const parsedData = JSON.parse(savedData);
-    
-    // Convert array back to Uint8Array
-    const worldData: WorldSave = {
-      ...parsedData,
-      chunks: parsedData.chunks.map((chunk: any) => ({
-        ...chunk,
-        voxelData: new Uint8Array(chunk.voxelData),
-      })),
-    };
-
-    console.log('World loaded successfully');
-    return worldData;
+    if (typeof localStorage === "undefined") return null;
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    return validateWorldSave(JSON.parse(raw));
   } catch (error) {
-    console.error('Failed to load world:', error);
+    // Keep malformed data in place so the user can recover or export it.
+    console.error("Saved world is invalid and was not loaded:", error);
     return null;
   }
 }
 
-export function deleteSave(): void {
-  localStorage.removeItem(SAVE_KEY);
-  console.log('Save deleted');
-}
-
 export function hasSave(): boolean {
-  return localStorage.getItem(SAVE_KEY) !== null;
+  return typeof localStorage !== "undefined" && localStorage.getItem(SAVE_KEY) !== null;
 }
 
-// Save only dirty chunks (chunks that have been modified)
-export function saveChunkData(chunkX: number, chunkZ: number, voxelData: Uint8Array): void {
-  const existingSave = loadWorld() || createNewSave();
-  
-  // Update or add the chunk
-  const chunkIndex = existingSave.chunks.findIndex(
-    chunk => chunk.x === chunkX && chunk.z === chunkZ
-  );
-  
-  const chunkData: ChunkData = {
-    x: chunkX,
-    z: chunkZ,
-    voxelData,
-    timestamp: Date.now(),
-  };
-  
-  if (chunkIndex >= 0) {
-    existingSave.chunks[chunkIndex] = chunkData;
-  } else {
-    existingSave.chunks.push(chunkData);
+export function readSaveStatus(): { exists: boolean; valid: boolean; message?: string } {
+  try {
+    if (typeof localStorage === "undefined") return { exists: false, valid: false };
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw === null) return { exists: false, valid: false };
+    validateWorldSave(JSON.parse(raw));
+    return { exists: true, valid: true };
+  } catch (error) {
+    return {
+      exists: true,
+      valid: false,
+      message: error instanceof Error ? error.message : "saved world could not be read",
+    };
   }
-  
-  saveWorld(existingSave);
 }
 
-function createNewSave(): WorldSave {
-  return {
-    chunks: [],
-    inventory: {
-      slots: new Array(36).fill(null),
-      counts: new Array(36).fill(0),
-      selectedSlot: 0,
-    },
-    playerPosition: { x: 0, y: 70, z: 0 },
-    playerRotation: { x: 0, y: 0 },
-    gameTime: 0,
-  };
+export function deleteSave(): SaveResult {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "storage delete failed" };
+  }
 }

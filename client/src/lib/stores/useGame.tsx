@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { BlockType } from "../../engine/blocks";
 import * as THREE from "three";
+import { clearGameplayInput } from "../input/gameInput";
+import { loadWorld, type WorldSave, CHUNK_HEIGHT, CHUNK_SIZE } from "../../engine/save";
+
+export type MenuId = "start" | "none" | "pause" | "inventory" | "crafting";
+export type GraphicsStatus = "starting" | "ready" | "lost" | "failed";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -12,6 +17,12 @@ interface ChunkData {
 
 interface GameState {
   phase: GamePhase;
+  menu: MenuId;
+  gameplayActive: boolean;
+  hasUnpersistedCraftingState: boolean;
+  graphicsStatus: GraphicsStatus;
+  graphicsError: string | null;
+  pendingPlayerTransform: WorldSave["playerPosition"] & { rotationX: number; rotationY: number } | null;
   // Player state
   playerPosition: THREE.Vector3;
   playerRotation: { x: number; y: number };
@@ -44,6 +55,10 @@ interface GameState {
   markChunkDirty: (chunkX: number, chunkZ: number) => void;
   // Time
   updateGameTime: (delta: number) => void;
+  setMenu: (menu: MenuId) => void;
+  setGraphicsStatus: (status: GraphicsStatus, error?: string | null) => void;
+  clearPendingPlayerTransform: () => void;
+  restoreWorld: (save: WorldSave) => void;
 }
 
 const initializeInventory = (): [(BlockType | null)[], number[]] => {
@@ -60,21 +75,9 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   return [inventory, counts];
 };
 
-const loadSavedGame = () => {
-  try {
-    const savedData = localStorage.getItem('buckland_blocks_save');
-    if (savedData) {
-      return JSON.parse(savedData);
-    }
-  } catch (error) {
-    console.error('Failed to load saved game:', error);
-  }
-  return null;
-};
-
 export const useGame = create<GameState>()(
   subscribeWithSelector((set, get) => {
-    const savedGame = loadSavedGame();
+    const savedGame = loadWorld();
     const [initialInventory, initialCounts] = initializeInventory();
     
     const initialChunks = new Map();
@@ -82,13 +85,23 @@ export const useGame = create<GameState>()(
       savedGame.chunks.forEach((chunk: any) => {
         initialChunks.set(chunk.key, {
           voxelData: new Uint8Array(chunk.voxelData),
-          dirty: false,
+          dirty: true,
         });
       });
     }
     
   return {
       phase: "ready",
+      menu: "start",
+      gameplayActive: false,
+      hasUnpersistedCraftingState: false,
+      graphicsStatus: "starting",
+      graphicsError: null,
+      pendingPlayerTransform: savedGame ? {
+        ...savedGame.playerPosition,
+        rotationX: savedGame.playerRotation.x,
+        rotationY: savedGame.playerRotation.y,
+      } : null,
       
       // Initial player state
       playerPosition: savedGame?.playerPosition 
@@ -99,7 +112,7 @@ export const useGame = create<GameState>()(
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: savedGame?.inventory || initialInventory,
       inventoryCounts: savedGame?.inventoryCounts || initialCounts,
-      selectedSlot: savedGame?.selectedSlot || 0,
+      selectedSlot: savedGame?.selectedSlot ?? 0,
       
       // Initial world state
       chunks: initialChunks,
@@ -268,11 +281,43 @@ export const useGame = create<GameState>()(
     },
     
     // Time
-    updateGameTime: (delta: number) => {
-      set((state) => ({
-        gameTime: (state.gameTime + delta) % 24000
-      }));
-    },
-  };})
+      updateGameTime: (delta: number) => {
+        set((state) => ({
+          gameTime: (state.gameTime + delta) % 24000
+        }));
+      },
+      setMenu: (menu: MenuId) => {
+        clearGameplayInput();
+        set((state) => ({
+          menu,
+          gameplayActive: menu === "none",
+          hasUnpersistedCraftingState: state.hasUnpersistedCraftingState || menu === "crafting",
+        }));
+      },
+      setGraphicsStatus: (status: GraphicsStatus, error: string | null = null) => {
+        set({ graphicsStatus: status, graphicsError: error });
+      },
+      clearPendingPlayerTransform: () => set({ pendingPlayerTransform: null }),
+      restoreWorld: (save: WorldSave) => {
+        const chunks = new Map<string, ChunkData>();
+        save.chunks.forEach((chunk) => chunks.set(chunk.key, {
+          voxelData: new Uint8Array(chunk.voxelData),
+          dirty: true,
+        }));
+        clearGameplayInput();
+        set({
+          chunks,
+          inventory: [...save.inventory],
+          inventoryCounts: [...save.inventoryCounts],
+          selectedSlot: save.selectedSlot,
+          gameTime: save.gameTime,
+          playerPosition: new THREE.Vector3(save.playerPosition.x, save.playerPosition.y, save.playerPosition.z),
+          playerRotation: { x: save.playerRotation.x, y: save.playerRotation.y },
+          pendingPlayerTransform: { ...save.playerPosition, rotationX: save.playerRotation.x, rotationY: save.playerRotation.y },
+          menu: "none",
+          gameplayActive: true,
+        });
+      },
+    };})
 );
 
