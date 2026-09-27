@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGame } from '../lib/stores/useGame';
 import * as THREE from 'three';
+import { isGameplayActive } from './session';
 
 const DayNightCycle: React.FC = () => {
   const { gameTime, updateGameTime } = useGame();
@@ -9,7 +10,7 @@ const DayNightCycle: React.FC = () => {
   const ambientLightRef = useRef<THREE.AmbientLight>(null);
 
   useFrame((state, delta) => {
-    updateGameTime(delta * 100);
+    if (isGameplayActive()) updateGameTime(delta * 100);
 
     const timeOfDay = (gameTime / 24000) * 24;
     const sunAngle = (timeOfDay / 24) * Math.PI * 2 - Math.PI / 2;
@@ -65,3 +66,5 @@ const DayNightCycle: React.FC = () => {
 };
 
 export default DayNightCycle;
+
+

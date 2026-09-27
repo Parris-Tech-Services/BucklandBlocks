@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { BlockType } from "../../engine/blocks";
 import * as THREE from "three";
+import { readSave } from "../../engine/save";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -60,26 +61,21 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   return [inventory, counts];
 };
 
-const loadSavedGame = () => {
-  try {
-    const savedData = localStorage.getItem('buckland_blocks_save');
-    if (savedData) {
-      return JSON.parse(savedData);
-    }
-  } catch (error) {
-    console.error('Failed to load saved game:', error);
-  }
-  return null;
-};
+// A failed read remains visible and never deletes the original save.
+export const initialSave = typeof window === 'undefined'
+  ? { data: null, error: null }
+  : (() => { try { return readSave(window.localStorage); } catch {
+      return { data: null, error: 'Browser storage is unavailable. Saving is disabled.' };
+    } })();
 
 export const useGame = create<GameState>()(
   subscribeWithSelector((set, get) => {
-    const savedGame = loadSavedGame();
+    const savedGame = initialSave.data;
     const [initialInventory, initialCounts] = initializeInventory();
     
-    const initialChunks = new Map();
+    const initialChunks = new Map<string, ChunkData>();
     if (savedGame?.chunks) {
-      savedGame.chunks.forEach((chunk: any) => {
+      savedGame.chunks.forEach((chunk) => {
         initialChunks.set(chunk.key, {
           voxelData: new Uint8Array(chunk.voxelData),
           dirty: false,
@@ -265,4 +261,6 @@ export const useGame = create<GameState>()(
     },
   };})
 );
+
+
 

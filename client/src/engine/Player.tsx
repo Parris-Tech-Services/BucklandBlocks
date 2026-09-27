@@ -1,8 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { Controls } from '../App';
+import { gameInput } from './input';
+import { isGameplayActive, useSession } from './session';
 import { performRaycast } from './raycast';
 import { BlockType, getBlockDrops, isBlockSolid } from './blocks';
 import { useGame } from '../lib/stores/useGame';
@@ -15,7 +15,7 @@ const AIR_CONTROL = 0.3;    // Some control while in air
 
 const Player: React.FC = () => {
   const { camera } = useThree();
-  const [, getKeys] = useKeyboardControls<Controls>();
+
   
   const {
     selectedSlot,
@@ -40,18 +40,26 @@ const Player: React.FC = () => {
   const miningTimeRef = useRef(0);
   const lastMineRef = useRef(0);
 
-  useEffect(() => {
-    const handleClick = () => {
-      document.body.requestPointerLock();
-    };
-
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
+  useLayoutEffect(() => {
+    const saved = useGame.getState();
+    camera.position.copy(saved.playerPosition);
+    camera.rotation.set(saved.playerRotation.x, saved.playerRotation.y, 0, 'YXZ');
+    velocityRef.current.set(0, 0, 0);
+    onGroundRef.current = false;
+    // Capture the exact transform when pausing, rather than a throttled HUD sample.
+    return useSession.subscribe(() => {
+      if (!isGameplayActive()) {
+        velocityRef.current.set(0, 0, 0);
+        gameInput.clear();
+        useGame.setState({ playerPosition: camera.position.clone(),
+          playerRotation: { x: camera.rotation.x, y: camera.rotation.y } });
+      }
+    });
+  }, [camera]);
 
   useEffect(() => {
     const handleHotbarSelect = (event: CustomEvent) => {
-      setSelectedSlot(event.detail);
+      if (isGameplayActive() && Number.isInteger(event.detail)) setSelectedSlot(event.detail);
     };
 
     window.addEventListener('hotbarSelect', handleHotbarSelect as EventListener);
@@ -60,7 +68,7 @@ const Player: React.FC = () => {
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
-      if (document.pointerLockElement !== document.body) return;
+      if (!isGameplayActive()) return;
 
       const sensitivity = 0.002;
       camera.rotation.y -= event.movementX * sensitivity;
@@ -73,7 +81,11 @@ const Player: React.FC = () => {
   }, [camera]);
 
   useFrame((state, delta) => {
-    const keys = getKeys();
+    if (!isGameplayActive()) return;
+    const chunkX = Math.floor(camera.position.x / 16);
+    const chunkZ = Math.floor(camera.position.z / 16);
+    if (!useGame.getState().getChunk(chunkX, chunkZ)) return;
+    const keys = gameInput.read();
     const velocity = velocityRef.current;
     
     const direction = new THREE.Vector3();
@@ -203,3 +215,5 @@ const Player: React.FC = () => {
 };
 
 export default Player;
+
+

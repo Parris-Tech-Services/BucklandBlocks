@@ -1,154 +1,47 @@
-import React from 'react';
-import { Play, Settings, Save, FolderOpen, Trash2, Home } from 'lucide-react';
-import { useGame } from '../lib/stores/useGame';
-import { useThree } from '@react-three/fiber';
+import { useState } from 'react';
+import { initialSave, useGame } from '../lib/stores/useGame';
+import { deleteSave, readSave, writeSave } from '../engine/save';
 
-interface PauseMenuProps {
-  onClose: () => void;
+export default function PauseMenu({ onClose, canResume = true }: { onClose: () => void; canResume?: boolean }) {
+  const [message, setMessage] = useState<string | null>(initialSave.error);
+  const save = () => {
+    try {
+      const state = useGame.getState();
+      writeSave({ playerPosition: { ...state.playerPosition }, playerRotation: state.playerRotation,
+        inventory: state.inventory, inventoryCounts: state.inventoryCounts,
+        selectedSlot: state.selectedSlot, gameTime: state.gameTime,
+        chunks: Array.from(state.chunks, ([key, chunk]) => ({ key, voxelData: Array.from(chunk.voxelData) })),
+        timestamp: Date.now() });
+      setMessage('World saved on this device.');
+    } catch {
+      setMessage('Save failed. Your previous save has not been replaced. Check browser storage space or access.');
+    }
+  };
+  const load = () => {
+    try {
+      const result = readSave();
+      if (result.error || !result.data) { setMessage(result.error ?? 'No saved world on this device.'); return; }
+      if (window.confirm('Load your saved world? Unsaved changes will be lost.')) window.location.reload();
+    } catch { setMessage('Browser storage is unavailable.'); }
+  };
+  const startNew = () => {
+    if (!window.confirm('Start a new world? Unsaved progress will be lost. The previous save will be backed up on this device.')) return;
+    try { deleteSave(); window.location.reload(); }
+    catch { setMessage('Could not back up the previous world. Nothing was deleted.'); }
+  };
+  return <div role="dialog" aria-modal="true" aria-labelledby="pause-title"
+    className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+    <div className="bg-gray-800 border-2 border-gray-400 p-6 rounded-lg text-white w-full max-w-sm max-h-full overflow-auto">
+      <h2 id="pause-title" className="text-2xl font-bold mb-4">Buckland Blocks</h2>
+      <p className="mb-4">Paused. Resume captures your mouse; Escape releases it.</p>
+      <div className="space-y-3">
+        <button autoFocus disabled={!canResume} onClick={onClose} className="w-full p-3 bg-gray-700 rounded disabled:opacity-50">Resume Game</button>
+        <button disabled={!!initialSave.error || !canResume} onClick={save} className="w-full p-3 bg-gray-700 rounded disabled:opacity-50">Save World</button>
+        <button onClick={load} className="w-full p-3 bg-gray-700 rounded">Load World</button>
+        <button onClick={startNew} className="w-full p-3 bg-red-800 rounded">New World</button>
+      </div>
+      {message && <p role="status" className="mt-4">{message}</p>}
+    </div>
+  </div>;
 }
 
-const PauseMenu: React.FC<PauseMenuProps> = ({ onClose }) => {
-  const { camera } = useThree();
-  const {
-    chunks,
-    inventory,
-    inventoryCounts,
-    selectedSlot,
-    gameTime,
-  } = useGame();
-
-  const handleResume = () => {
-    onClose();
-  };
-
-  const handleSave = () => {
-    try {
-      const saveData = {
-        playerPosition: {
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z,
-        },
-        playerRotation: {
-          x: camera.rotation.x,
-          y: camera.rotation.y,
-        },
-        inventory: [...inventory],
-        inventoryCounts: [...inventoryCounts],
-        selectedSlot,
-        gameTime,
-        chunks: Array.from(chunks.entries()).map(([key, data]) => ({
-          key,
-          voxelData: Array.from(data.voxelData),
-        })),
-        timestamp: Date.now(),
-      };
-      
-      localStorage.setItem('buckland_blocks_save', JSON.stringify(saveData));
-      console.log('World saved successfully!');
-      onClose();
-    } catch (error) {
-      console.error('Failed to save world:', error);
-      alert('Failed to save world');
-    }
-  };
-
-  const handleLoad = () => {
-    try {
-      const savedData = localStorage.getItem('buckland_blocks_save');
-      if (savedData) {
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to load world:', error);
-      alert('Failed to load world');
-    }
-  };
-
-  const handleNewWorld = () => {
-    if (window.confirm('This will delete your current world. Are you sure?')) {
-      localStorage.removeItem('buckland_blocks_save');
-      window.location.reload();
-    }
-  };
-
-  const handleSettings = () => {
-    console.log('Opening settings...');
-  };
-
-  const handleMainMenu = () => {
-    console.log('Returning to main menu...');
-  };
-
-  const hasSave = () => {
-    return localStorage.getItem('buckland_blocks_save') !== null;
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border-2 border-gray-400 p-6 rounded-lg min-w-[300px]">
-        <h2 className="text-white text-2xl font-bold text-center mb-6">Buckland Blocks</h2>
-        
-        <div className="space-y-3">
-          <button
-            onClick={handleResume}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Play size={20} />
-            <span>Resume Game</span>
-          </button>
-
-          <button
-            onClick={handleSave}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Save size={20} />
-            <span>Save World</span>
-          </button>
-
-          {hasSave() && (
-            <button
-              onClick={handleLoad}
-              className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-            >
-              <FolderOpen size={20} />
-              <span>Load World</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleSettings}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Settings size={20} />
-            <span>Settings</span>
-          </button>
-
-          <button
-            onClick={handleNewWorld}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-          >
-            <Trash2 size={20} />
-            <span>New World</span>
-          </button>
-
-          <button
-            onClick={handleMainMenu}
-            className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            <Home size={20} />
-            <span>Main Menu</span>
-          </button>
-        </div>
-
-        <div className="mt-6 text-center text-gray-400 text-sm">
-          <div>Press ESC to resume</div>
-          <div className="mt-2">Buckland Blocks v1.0</div>
-          <div className="text-xs">MIT Licensed - IP Safe</div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default PauseMenu;
