@@ -115,7 +115,12 @@ const normalizeInventory = (
     const slot = slots[i];
     const count = counts[i];
     if (
-      (slot === null || (Number.isInteger(slot) && slot >= BlockType.AIR && slot <= BlockType.SKY)) &&
+      (slot === null ||
+        (typeof slot === "number" &&
+          Number.isInteger(slot) &&
+          slot >= BlockType.AIR &&
+          slot <= BlockType.SKY)) &&
+      typeof count === "number" &&
       Number.isInteger(count) &&
       count >= 0
     ) {
@@ -185,6 +190,9 @@ export const useGame = create<GameState>()(
         ? { x: savedRotation.x, y: savedRotation.y }
         : { x: 0, y: 0 };
 
+    const savedSelectedSlot = savedGame?.selectedSlot;
+    const savedGameTime = savedGame?.gameTime;
+
     return {
       phase: "ready",
       activeMenu: "none",
@@ -197,14 +205,15 @@ export const useGame = create<GameState>()(
       inventory: initialInventory,
       inventoryCounts: initialCounts,
       selectedSlot:
-        Number.isInteger(savedGame?.selectedSlot) &&
-        (savedGame?.selectedSlot as number) >= 0 &&
-        (savedGame?.selectedSlot as number) <= 8
-          ? (savedGame?.selectedSlot as number)
+        typeof savedSelectedSlot === "number" &&
+        Number.isInteger(savedSelectedSlot) &&
+        savedSelectedSlot >= 0 &&
+        savedSelectedSlot <= 8
+          ? savedSelectedSlot
           : 0,
 
       chunks: initialChunks,
-      gameTime: isFiniteNumber(savedGame?.gameTime) ? savedGame!.gameTime! : 0,
+      gameTime: isFiniteNumber(savedGameTime) ? savedGameTime : 0,
 
       fps: 0,
       setFps: (v) => set({ fps: Number.isFinite(v) ? v : 0 }),
