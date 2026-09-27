@@ -9,8 +9,7 @@ export function createBlockMesh(
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
-  const indices: number[] = [];
-    const groups: { start: number; count: number; materialIndex: number }[] = [];
+  const indicesByMaterial: number[][] = Array.from({ length: 6 }, () => []);
 
   let vertexIndex = 0;
 
@@ -109,16 +108,14 @@ export function createBlockMesh(
       uvs.push(uv[i * 2], uv[i * 2 + 1]);
     }
 
-    // record where these indices start so we can create a geometry group per material
-    const indexStart = indices.length;
-    indices.push(
+    const faceIndices = [
       vertexIndex,
       vertexIndex + 1,
       vertexIndex + 2,
       vertexIndex,
       vertexIndex + 2,
       vertexIndex + 3
-    );
+    ];
 
     // determine material index by block type (must match Chunk.tsx materials order)
     let materialIndex = 0;
@@ -142,8 +139,7 @@ export function createBlockMesh(
         materialIndex = 0; break;
     }
 
-    // push group info (start index and count)
-    groups.push({ start: indexStart, count: 6, materialIndex });
+    indicesByMaterial[materialIndex].push(...faceIndices);
 
     vertexIndex += 4;
   };
@@ -170,17 +166,17 @@ export function createBlockMesh(
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
   geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-  geo.setIndex(indices);
-  // apply material groups
-  // three expects group ranges on the index buffer
-  groups.forEach((g) => {
-    geo.addGroup(g.start, g.count, g.materialIndex);
+  const indices: number[] = [];
+  let indexStart = 0;
+  indicesByMaterial.forEach((materialIndices, materialIndex) => {
+    if (materialIndices.length === 0) return;
+    indices.push(...materialIndices);
+    geo.addGroup(indexStart, materialIndices.length, materialIndex);
+    indexStart += materialIndices.length;
   });
+  geo.setIndex(indices);
 
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
 }
-
-// local groups buffer
-const groups: { start: number; count: number; materialIndex: number }[] = [];

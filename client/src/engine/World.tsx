@@ -18,7 +18,11 @@ const OSM_ENABLED = import.meta.env.VITE_ENABLE_OSM === "true";
 const World: React.FC<WorldProps> = ({ viewDistance = 1 }) => {
   const { camera, scene } = useThree();
   const [centerChunk, setCenterChunk] = useState({ x: 0, z: 0 });
-  const { setChunk, getChunk } = useGame();
+  // Targeted selectors (not a whole-store destructure) so this component —
+  // a direct parent of every Chunk mesh — doesn't re-render on unrelated
+  // per-frame store writes like fps/playerPosition.
+  const setChunk = useGame((s) => s.setChunk);
+  const getChunk = useGame((s) => s.getChunk);
   const [renderedChunks, setRenderedChunks] = useState<Set<string>>(new Set());
   const lightsAdded = useRef(false);
 

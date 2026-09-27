@@ -45,7 +45,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.DIRT]: {
     id: BlockType.DIRT,
     name: "Dirt",
-    texture: "/textures/grass.png",
+    texture: "./textures/grass.png",
     hardness: 0.5,
     transparent: false,
     emissive: false,
@@ -56,7 +56,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.GRASS]: {
     id: BlockType.GRASS,
     name: "Grass Block",
-    texture: "/textures/grass.png",
+    texture: "./textures/grass.png",
     hardness: 0.6,
     transparent: false,
     emissive: false,
@@ -67,7 +67,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.STONE]: {
     id: BlockType.STONE,
     name: "Stone",
-    texture: "/textures/asphalt.png",
+    texture: "./textures/asphalt.png",
     hardness: 1.5,
     transparent: false,
     emissive: false,
@@ -79,7 +79,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.WOOD_LOG]: {
     id: BlockType.WOOD_LOG,
     name: "Wood Log",
-    texture: "/textures/wood.jpg",
+    texture: "./textures/wood.jpg",
     hardness: 2,
     transparent: false,
     emissive: false,
@@ -90,7 +90,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.WOOD_PLANK]: {
     id: BlockType.WOOD_PLANK,
     name: "Wood Planks",
-    texture: "/textures/wood.jpg",
+    texture: "./textures/wood.jpg",
     hardness: 2,
     transparent: false,
     emissive: false,
@@ -101,7 +101,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.LEAF]: {
     id: BlockType.LEAF,
     name: "Leaves",
-    texture: "/textures/grass.png",
+    texture: "./textures/grass.png",
     hardness: 0.2,
     transparent: true,
     emissive: false,
@@ -112,7 +112,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.GLASS]: {
     id: BlockType.GLASS,
     name: "Glass",
-    texture: "/textures/sky.png",
+    texture: "./textures/sky.png",
     hardness: 0.3,
     transparent: true,
     emissive: false,
@@ -123,7 +123,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.BRICK]: {
     id: BlockType.BRICK,
     name: "Brick",
-    texture: "/textures/asphalt.png",
+    texture: "./textures/asphalt.png",
     hardness: 2,
     transparent: false,
     emissive: false,
@@ -134,7 +134,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.TORCH]: {
     id: BlockType.TORCH,
     name: "Torch",
-    texture: "/textures/wood.jpg",
+    texture: "./textures/wood.jpg",
     hardness: 0.1,
     transparent: true,
     emissive: true,
@@ -145,7 +145,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.WATER]: {
     id: BlockType.WATER,
     name: "Water",
-    texture: "/textures/sky.png",
+    texture: "./textures/sky.png",
     hardness: 0,
     transparent: true,
     emissive: false,
@@ -155,7 +155,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.SAND]: {
     id: BlockType.SAND,
     name: "Sand",
-    texture: "/textures/sand.jpg",
+    texture: "./textures/sand.jpg",
     hardness: 0.5,
     transparent: false,
     emissive: false,
@@ -166,7 +166,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.COBBLESTONE]: {
     id: BlockType.COBBLESTONE,
     name: "Cobblestone",
-    texture: "/textures/asphalt.png",
+    texture: "./textures/asphalt.png",
     hardness: 2,
     transparent: false,
     emissive: false,
@@ -177,7 +177,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.DOOR_BOTTOM]: {
     id: BlockType.DOOR_BOTTOM,
     name: "Door (Bottom)",
-    texture: "/textures/wood.jpg",
+    texture: "./textures/wood.jpg",
     hardness: 3,
     transparent: true,
     emissive: false,
@@ -188,7 +188,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.DOOR_TOP]: {
     id: BlockType.DOOR_TOP,
     name: "Door (Top)",
-    texture: "/textures/wood.jpg",
+    texture: "./textures/wood.jpg",
     hardness: 3,
     transparent: true,
     emissive: false,
@@ -199,7 +199,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.WOOD]: {
     id: BlockType.WOOD,
     name: "Wood",
-    texture: "/textures/wood.jpg",
+    texture: "./textures/wood.jpg",
     hardness: 2,
     transparent: false,
     emissive: false,
@@ -210,7 +210,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.SKY]: {
     id: BlockType.SKY,
     name: "Sky",
-    texture: "/textures/sky.png",
+    texture: "./textures/sky.png",
     hardness: 0,
     transparent: true,
     emissive: false,
