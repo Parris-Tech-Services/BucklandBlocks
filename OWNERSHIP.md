@@ -95,41 +95,86 @@ Confirmed root causes, fixed in branch `fix/buckland-static-runtime` of this rep
    (magFilter stays `NearestFilter` so close-up voxels are still crisp/blocky).
 4. **Spawn/physics: player could fall through terrain before chunks generated,
    and vertical "collision" was a same-column highest-block clamp (no real
-   walls/ceilings, no caves).** Partial fix in progress from an earlier session
-   (`findSurfaceY` recovery clamp), reconciled here. **Still open:** genuine
-   per-axis AABB collision against solid voxels (walls, ceilings, corners, caves/
-   overhangs) — this is Priority 3 in Josh's brief and is being implemented now.
+   walls/ceilings, no caves).** Fixed: `client/src/engine/collision.ts` adds
+   real per-axis AABB collision against solid voxels, substepped (0.2 units/
+   step) to prevent tunnelling through thin walls on a slow frame. Physics
+   freezes over a column whose chunk hasn't generated yet instead of treating
+   it as open air. Caves/overhangs now work correctly (no longer snapped to
+   the highest block in the column).
 5. **Block-selection outline mesh was centred on the voxel's min-corner
    coordinate instead of its centre**, so the wireframe cube didn't wrap the
    targeted block. Fixed: render position offset by `+0.5` on each axis.
+6. **Found and fixed while verifying #4:** the default-spawn ground search
+   excluded tree trunk/leaf blocks from counting as "ground" but never
+   checked whether the chosen spot actually had headroom above it. Where a
+   trunk stood directly on solid ground with no gap, this placed the player's
+   body inside the trunk at spawn, permanently freezing all movement via
+   self-collision (confirmed by frame-by-frame instrumentation: velocity
+   non-zero every frame, position never changing). Fixed by validating
+   headroom with the same collision check the trunk itself is subject to,
+   rather than excluding block types up front.
+7. **Found and fixed while verifying #6:** the spawn placement and its own
+   safety check used inconsistent coordinates (integer column corner vs.
+   column centre), which — because the player has non-zero width — could
+   make the check pass while the actual spawn point still collided with
+   terrain in the neighbouring column. Fixed by using the column centre
+   consistently in both places.
 
 ## Evidence (codingprinciples.md §9.4 — evidence, not confidence)
 
-- `npm run build` → exit 0 (Vite build succeeded, no TS/build errors surfaced by
-  the build step itself).
+- `npm run check` (tsc) → exit 0.
+- `npm test` → **13/13 passed** — `collision.test.ts` (5), `mesher.test.ts` (3,
+  regression-tests the face-batching fix directly), `raycast.test.ts` (5,
+  covers zero-direction, negative coordinates, exact voxel boundaries, and
+  max-distance cutoff per the brief's explicit requirement), via node's
+  built-in test runner — no new dependency.
+- `npx vite build` → exit 0.
 - Headless Chromium (software/swiftshader rendering — **not representative of
   real GPU hardware performance**, only used to verify correctness and relative
   draw-call reduction): zero page errors, zero failed network requests, across
-  page load, onboarding flow, and a 4-second forward-movement traversal crossing
-  chunk boundaries.
+  page load, onboarding flow, a 4-second forward-movement traversal crossing
+  chunk boundaries, and jump (verified via frame-by-frame internal-state
+  polling from inside the page — this sandbox renders as few as ~3 real frames
+  per second, too sparse to catch a jump's arc by wall-clock sampling; the
+  poll confirmed velocity flips from 0 to positive and the grounded flag
+  clears on jump, then gravity correctly re-lands the player).
 - Real WebGL instrumentation (`gl.drawElements` call-counted directly, not
-  estimated): 72 draw calls at spawn, 74 after traversal. This is the correct,
-  environment-independent signal for the mesh-batching fix; raw FPS in this
-  sandbox is not (software rendering of ~450–470k triangles is inherently slow
-  regardless of code quality).
+  estimated): 64–74 draw calls per frame at spawn and after traversal. This is
+  the correct, environment-independent signal for the mesh-batching fix; raw
+  FPS in this sandbox is not (software rendering of ~400–480k triangles is
+  inherently slow regardless of code quality).
+- **Verified against the live production URL** after deploy (see below):
+  zero console errors, real position change confirmed after a 3-second
+  forward-movement traversal.
 - **Not yet measured on Josh's actual desktop hardware.** Per the brief's
   acceptance criteria, the 30–60 FPS target cannot be claimed passed until real
   hardware confirms it — this is an explicit open item, not a claimed pass.
 
+## Deployment (completed this session)
+
+- `Parris-Tech-Services/BucklandBlocks` branch `fix/buckland-static-runtime`,
+  commit `fc98c81` → draft PR:
+  https://github.com/Parris-Tech-Services/BucklandBlocks/pull/2
+- Built (`npx vite build`) and copied into `joshualparris/JoshHub`
+  `public/games/buckland-blocks/` (commit `b5c29d4`, merged with concurrent
+  unrelated doc-archive commits from another remote, pushed to the
+  `joshualparris/JoshHub` fork — the `origin` remote there,
+  `joshuaparrisdadlan-stack/JoshHub`, denied write access to this account).
+- Deployed to Vercel production (`josh-hub` project) via `vercel --prod`;
+  live at `https://josh-hub-two.vercel.app/games/buckland-blocks/index.html`,
+  confirmed serving the new bundle (`index-B0zwj5Cu.js`) with zero console
+  errors and working movement.
+
 ## Open items / blockers
 
-- Full per-axis AABB player-volume collision (walls/ceilings/corners/caves) —
-  in progress.
 - Real-hardware FPS measurement — blocked on access to Josh's actual desktop;
-  will report the limitation rather than claim the target passed if unavailable.
+  reporting the limitation rather than claiming the target passed.
 - Reconcile `buckland-v2` and `buckland-blocks-demo` against this canonical
   determination — not yet started, flagged so no agent invests further feature
   work in either without resolving §0.4 first.
+- Full regression pass (pause/menu, save/load, inventory/crafting) once
+  Codex's and agy's changes land — those areas are outside this session's
+  scope per the ownership map above.
 
 ## Coordination ask (relayed from Josh, via "astra")
 
