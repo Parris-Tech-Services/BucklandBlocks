@@ -9,11 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    glsl(), // Add GLSL shader support
-  ],
+  base: "./",
+  plugins: [react(), runtimeErrorOverlay(), glsl()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
@@ -25,6 +22,5 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
-  // Add support for large models and audio files
   assetsInclude: ["**/*.gltf", "**/*.glb", "**/*.mp3", "**/*.ogg", "**/*.wav"],
 });
