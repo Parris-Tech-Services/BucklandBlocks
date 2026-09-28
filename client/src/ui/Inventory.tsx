@@ -1,74 +1,118 @@
-import React from 'react';
-import { X } from 'lucide-react';
-import { BlockType, BLOCKS } from '../engine/blocks';
-import { useGame } from '../lib/stores/useGame';
+import React, { useState } from "react";
+import { X } from "lucide-react";
+import { BlockType, BLOCKS } from "../engine/blocks";
+import { useGame } from "../lib/stores/useGame";
 
 interface InventoryProps {
   onClose: () => void;
 }
 
 const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
-  const { inventory, inventoryCounts } = useGame();
-  const handleSlotClick = (slotIndex: number) => {
-    // TODO: Handle slot interactions (move items, split stacks, etc.)
-    console.log('Clicked inventory slot:', slotIndex);
+  const inventory = useGame((state) => state.inventory);
+  const inventoryCounts = useGame((state) => state.inventoryCounts);
+  const moveInventoryItem = useGame((state) => state.moveInventoryItem);
+  const [selectedSource, setSelectedSource] = useState<number | null>(null);
+  const [splitMode, setSplitMode] = useState(false);
+
+  const selectSource = (slotIndex: number, split = false) => {
+    if (inventory[slotIndex] === null || inventoryCounts[slotIndex] <= 0) return;
+    setSelectedSource(slotIndex);
+    setSplitMode(split);
   };
 
-  const renderSlot = (slotIndex: number, isHotbar: boolean = false) => {
+  const placeSelection = (slotIndex: number) => {
+    if (selectedSource === null) {
+      selectSource(slotIndex);
+      return;
+    }
+
+    if (selectedSource === slotIndex) {
+      setSelectedSource(null);
+      setSplitMode(false);
+      return;
+    }
+
+    const amount = splitMode
+      ? Math.ceil(inventoryCounts[selectedSource] / 2)
+      : undefined;
+
+    moveInventoryItem(selectedSource, slotIndex, amount);
+    setSelectedSource(null);
+    setSplitMode(false);
+  };
+
+  const renderSlot = (slotIndex: number, isHotbar = false) => {
     const blockType = inventory[slotIndex];
     const count = inventoryCounts[slotIndex];
-    
+    const selected = selectedSource === slotIndex;
+
     return (
-      <div
+      <button
         key={slotIndex}
-        className={`w-12 h-12 border-2 border-gray-400 bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600 ${
-          isHotbar ? 'border-yellow-400' : ''
-        }`}
-        onClick={() => handleSlotClick(slotIndex)}
+        type="button"
+        aria-label={`Inventory slot ${slotIndex + 1}`}
+        className={`relative flex aspect-square min-w-0 flex-col items-center justify-center border-2 bg-gray-700 text-white hover:bg-gray-600 ${
+          isHotbar ? "border-yellow-400" : "border-gray-400"
+        } ${selected ? "ring-2 ring-cyan-300" : ""}`}
+        onClick={() => placeSelection(slotIndex)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          if (selectedSource === null) {
+            selectSource(slotIndex, true);
+          } else {
+            placeSelection(slotIndex);
+          }
+        }}
       >
         {blockType !== null && blockType !== BlockType.AIR && (
           <>
-            <div className="text-white text-[8px] font-bold text-center">
+            <div className="text-[7px] font-bold sm:text-[8px]">
               {BLOCKS[blockType].name.slice(0, 4)}
             </div>
             {count > 0 && (
-              <div className="text-white text-[10px]">{count}</div>
+              <div className="text-[9px] sm:text-[10px]">{count}</div>
             )}
           </>
         )}
-      </div>
+      </button>
     );
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 border-2 border-gray-400 p-4 rounded-lg min-w-[400px]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-white text-lg font-bold">Inventory</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3">
+      <div className="w-full max-w-[520px] rounded-lg border-2 border-gray-400 bg-gray-800 p-3 sm:p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-white">Inventory</h2>
+            <p className="text-xs text-gray-400">
+              Click a stack then a destination to move, merge or swap it. Right-click a stack first to move half.
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-300"
+            className="p-2 text-white hover:text-gray-300"
+            aria-label="Close inventory"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Main inventory grid (3x9 = 27 slots) */}
-        <div className="mb-4">
-          <div className="grid grid-cols-9 gap-1 mb-2">
-            {Array.from({ length: 27 }, (_, i) => renderSlot(i + 9))}
-          </div>
+        <div className="mb-4 grid grid-cols-9 gap-1">
+          {Array.from({ length: 27 }, (_, index) =>
+            renderSlot(index + 9),
+          )}
         </div>
 
-        {/* Hotbar (9 slots) */}
-        <div className="border-t border-gray-600 pt-2">
+        <div className="border-t border-gray-600 pt-3">
           <div className="grid grid-cols-9 gap-1">
-            {Array.from({ length: 9 }, (_, i) => renderSlot(i, true))}
+            {Array.from({ length: 9 }, (_, index) =>
+              renderSlot(index, true),
+            )}
           </div>
         </div>
 
-        <div className="mt-4 text-center text-gray-400 text-sm">
-          Press E to close
+        <div className="mt-3 text-center text-xs text-gray-400">
+          Press E or ESC to close
         </div>
       </div>
     </div>
