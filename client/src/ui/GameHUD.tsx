@@ -17,6 +17,7 @@ const GameHUD: React.FC = () => {
   } = useGame();
   const menu = useSession((state) => state.menu);
   const setMenu = useSession((state) => state.setMenu);
+  const hudVisible = useSession((state) => state.hudVisible);
 
 
   const [popupName, setPopupName] = useState<string | null>(null);
@@ -53,6 +54,8 @@ const GameHUD: React.FC = () => {
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none">
+      {hudVisible && (
+        <>
       {/* Crosshair */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <div className="relative w-4 h-4 border-2 border-white opacity-75">
@@ -173,6 +176,9 @@ const GameHUD: React.FC = () => {
         </div>
       </div>
 
+
+        </>
+      )}
       {menu === "death" && (
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/65">
           <div className="rounded border-2 border-red-700 bg-black/90 px-10 py-8 text-center text-white shadow-2xl">
