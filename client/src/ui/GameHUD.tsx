@@ -13,6 +13,7 @@ const GameHUD: React.FC = () => {
     playerPosition,
     fps,
   } = useGame();
+  const menu = useSession((state) => state.menu);
 
 
   const [popupName, setPopupName] = useState<string | null>(null);
