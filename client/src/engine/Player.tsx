@@ -257,8 +257,20 @@ const Player: React.FC = () => {
     });
 
     const now = Date.now();
+    const mineRequested =
+      keys.mine || gameInput.hasMousePress("mine");
+    const placeRequested =
+      keys.place || gameInput.hasMousePress("place");
 
-    if (keys.mine && raycast && now - lastActionRef.current > 200) {
+    if (
+      mineRequested &&
+      raycast &&
+      raycast.distance > 0.25 &&
+      now - lastActionRef.current > 200
+    ) {
+      // Consume the discrete press only when the action is actually allowed
+      // to fire, so a click during the short cooldown is not silently lost.
+      gameInput.consumeMousePress("mine");
       lastActionRef.current = now;
 
       const { x, y, z } = raycast.position;
@@ -276,8 +288,9 @@ const Player: React.FC = () => {
     }
 
     if (
-      keys.place &&
+      placeRequested &&
       raycast &&
+      raycast.distance > 0.25 &&
       now - lastActionRef.current > 200
     ) {
       const selectedBlockType = inventory[selectedSlot];
@@ -286,6 +299,7 @@ const Player: React.FC = () => {
         selectedBlockType !== null &&
         inventoryCounts[selectedSlot] > 0
       ) {
+        gameInput.consumeMousePress("place");
         lastActionRef.current = now;
 
         const placePos = raycast.position.clone().add(raycast.normal);
