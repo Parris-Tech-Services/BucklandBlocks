@@ -6,8 +6,8 @@ import Chunk from "./Chunk";
 import { generateChunkTerrain } from "../utils/noise";
 import { fetchOSMData, processOSMData } from "../utils/osm";
 import { useGame } from "../lib/stores/useGame";
-
-interface WorldProps { viewDistance?: number; }
+import { useSession } from "./session";
+import { CHUNK_GENERATION_BATCH, orderedChunkCoords } from "./chunkStreaming";
 
 const CHUNK_SIZE = { x: 16, y: 128, z: 16 };
 const STARTING_ADDRESS = "53 Buckland Street, Epsom VIC 3551, Australia";
@@ -15,8 +15,9 @@ const OSM_ENABLED = import.meta.env.VITE_ENABLE_OSM === "true";
 
 // Keep the initial static-deployment workload small enough for ordinary browsers.
 // Chunks are expanded as the player moves into a new chunk.
-const World: React.FC<WorldProps> = ({ viewDistance = 1 }) => {
+const World: React.FC = () => {
   const { camera, scene } = useThree();
+  const viewDistance = useSession((state) => state.viewDistance);
   const [centerChunk, setCenterChunk] = useState({ x: 0, z: 0 });
   // Targeted selectors (not a whole-store destructure) so this component —
   // a direct parent of every Chunk mesh — doesn't re-render on unrelated
@@ -73,26 +74,68 @@ const World: React.FC<WorldProps> = ({ viewDistance = 1 }) => {
   }, [camera, centerChunk]);
 
   useEffect(() => {
-    const newRendered = new Set<string>();
+    const coords = orderedChunkCoords(
+      centerChunk.x,
+      centerChunk.z,
+      viewDistance,
+    );
+    setRenderedChunks(
+      new Set(coords.map(({ x, z }) => `${x},${z}`)),
+    );
 
-    for (let x = centerChunk.x - viewDistance; x <= centerChunk.x + viewDistance; x++) {
-      for (let z = centerChunk.z - viewDistance; z <= centerChunk.z + viewDistance; z++) {
-        const key = `${x},${z}`;
-        newRendered.add(key);
+    const pending = coords.filter(({ x, z }) => !getChunk(x, z));
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-        if (!getChunk(x, z)) {
-          let chunkData = generateChunkTerrain(
-            x * CHUNK_SIZE.x, 0, z * CHUNK_SIZE.z,
-            CHUNK_SIZE.x, CHUNK_SIZE.y, CHUNK_SIZE.z,
+    const generateBatch = () => {
+      if (cancelled) return;
+
+      for (
+        let i = 0;
+        i < CHUNK_GENERATION_BATCH && pending.length > 0;
+        i++
+      ) {
+        const next = pending.shift();
+        if (!next || getChunk(next.x, next.z)) continue;
+
+        let chunkData = generateChunkTerrain(
+          next.x * CHUNK_SIZE.x,
+          0,
+          next.z * CHUNK_SIZE.z,
+          CHUNK_SIZE.x,
+          CHUNK_SIZE.y,
+          CHUNK_SIZE.z,
+        );
+        if (osmData) {
+          chunkData = processOSMData(
+            chunkData,
+            osmData,
+            next.x,
+            next.z,
+            CHUNK_SIZE,
           );
-          if (osmData) chunkData = processOSMData(chunkData, osmData, x, z, CHUNK_SIZE);
-          setChunk(x, z, chunkData);
         }
+        setChunk(next.x, next.z, chunkData);
       }
-    }
 
-    setRenderedChunks(newRendered);
-  }, [centerChunk, viewDistance, osmData, getChunk, setChunk]);
+      if (!cancelled && pending.length > 0) {
+        timer = setTimeout(generateBatch, 24);
+      }
+    };
+
+    generateBatch();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [
+    centerChunk,
+    viewDistance,
+    osmData,
+    getChunk,
+    setChunk,
+  ]);
 
   if (isLoading) {
     return (
