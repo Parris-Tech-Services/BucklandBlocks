@@ -36,6 +36,12 @@ interface GameState {
   // Inventory
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
+  craftingGrid: (BlockType | null)[];
+  craftingCounts: number[];
+  craftingTableGrid: (BlockType | null)[];
+  craftingTableCounts: number[];
+  cursorItem: { type: BlockType; count: number } | null;
+  setCursorItem: (item: { type: BlockType; count: number } | null) => void;
   
   
   blockEntities: Record<string, BlockEntity>;
@@ -155,6 +161,12 @@ export const useGame = create<GameState>()(
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: loadedInventory,
       inventoryCounts: loadedInventoryCounts,
+      craftingGrid: new Array(4).fill(null),
+      craftingCounts: new Array(4).fill(0),
+      craftingTableGrid: new Array(9).fill(null),
+      craftingTableCounts: new Array(9).fill(0),
+      cursorItem: null,
+      setCursorItem: (item) => set({ cursorItem: item }),
       armor: savedGame?.armor || new Array(4).fill(null),
       droppedItems: savedGame?.droppedItems || [],
       blockEntities: savedGame?.blockEntities || {},

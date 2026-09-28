@@ -49,7 +49,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.STICK]: {
     id: BlockType.STICK,
     name: "Stick",
-    texture: "./textures/stick.png",
+    texture: "./textures/wood.jpg",
     hardness: 0,
     transparent: true,
     emissive: false,
@@ -61,7 +61,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.PICKAXE]: {
     id: BlockType.PICKAXE,
     name: "Wooden Pickaxe",
-    texture: "./textures/pickaxe.png",
+    texture: "./textures/wood.jpg",
     hardness: 0,
     transparent: true,
     emissive: false,
@@ -76,7 +76,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.SWORD]: {
     id: BlockType.SWORD,
     name: "Wooden Sword",
-    texture: "./textures/sword.png",
+    texture: "./textures/wood.jpg",
     hardness: 0,
     transparent: true,
     emissive: false,
@@ -91,7 +91,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.AXE]: {
     id: BlockType.AXE,
     name: "Wooden Axe",
-    texture: "./textures/axe.png",
+    texture: "./textures/wood.jpg",
     hardness: 0,
     transparent: true,
     emissive: false,
@@ -106,7 +106,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
   [BlockType.SHOVEL]: {
     id: BlockType.SHOVEL,
     name: "Wooden Shovel",
-    texture: "./textures/shovel.png",
+    texture: "./textures/wood.jpg",
     hardness: 0,
     transparent: true,
     emissive: false,
