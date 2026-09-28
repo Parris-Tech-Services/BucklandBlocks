@@ -68,6 +68,15 @@ const Chunk: React.FC<ChunkProps> = ({
         side: THREE.DoubleSide,
         depthWrite: false,
       }),
+      new THREE.MeshStandardMaterial({
+        color: 0x3a7bd5,
+        roughness: 0.1,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.65,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
     ],
     [
       textures.dirt,
