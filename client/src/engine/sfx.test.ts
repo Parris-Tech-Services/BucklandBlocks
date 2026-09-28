@@ -4,7 +4,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BlockType } from './blocks';
-import { createHitTimer, HIT_INTERVAL_SECONDS, materialOf, playBreak } from './sfx';
+import {
+  createHitTimer,
+  HIT_INTERVAL_SECONDS,
+  isSfxMuted,
+  materialOf,
+  playBreak,
+  readSoundEnabled,
+  saveSoundEnabled,
+  setSfxMuted,
+  SOUND_PREFERENCE_KEY,
+} from './sfx';
 
 test('blocks sound like their material', () => {
   assert.equal(materialOf(BlockType.WOOD_LOG), 'wood');
@@ -36,4 +46,33 @@ test('releasing resets the swing timer', () => {
 
 test('playback outside a browser is a silent no-op', () => {
   assert.doesNotThrow(() => playBreak(BlockType.STONE));
+});
+
+
+test('sound is on unless the player turned it off', () => {
+  const store = new Map<string, string>();
+  const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
+  assert.equal(readSoundEnabled(storage), true);
+  saveSoundEnabled(false, storage);
+  assert.equal(store.get(SOUND_PREFERENCE_KEY), 'off');
+  assert.equal(readSoundEnabled(storage), false);
+  saveSoundEnabled(true, storage);
+  assert.equal(readSoundEnabled(storage), true);
+});
+
+test('blocked storage never breaks the game and defaults to sound on', () => {
+  const broken = {
+    getItem: () => { throw new Error('SecurityError'); },
+    setItem: () => { throw new Error('QuotaExceeded'); },
+  };
+  assert.equal(readSoundEnabled(broken), true);
+  assert.doesNotThrow(() => saveSoundEnabled(false, broken));
+  assert.equal(readSoundEnabled(undefined), true);
+});
+
+test('muting is observable and reversible', () => {
+  setSfxMuted(true);
+  assert.equal(isSfxMuted(), true);
+  setSfxMuted(false);
+  assert.equal(isSfxMuted(), false);
 });

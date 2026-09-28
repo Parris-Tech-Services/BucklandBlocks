@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import { initialSave, useGame } from '../lib/stores/useGame';
 import { deleteSave, readSave, writeSave } from '../engine/save';
+import { isSfxMuted, saveSoundEnabled, setSfxMuted } from '../engine/sfx';
 
 export default function PauseMenu({ onClose, canResume = true }: { onClose: () => void; canResume?: boolean }) {
   const [message, setMessage] = useState<string | null>(initialSave.error);
+  const [soundMuted, setSoundMuted] = useState(isSfxMuted);
+  const toggleSound = () => {
+    const muted = !soundMuted;
+    setSfxMuted(muted);
+    setSoundMuted(muted);
+    try {
+      saveSoundEnabled(!muted, window.localStorage);
+    } catch {
+      // Storage unavailable: the choice still applies for this session.
+    }
+  };
   const save = () => {
     try {
       const state = useGame.getState();
@@ -47,6 +59,7 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
         <button autoFocus disabled={!canResume} onClick={onClose} className="w-full p-3 bg-gray-700 rounded disabled:opacity-50">Resume Game</button>
         <button disabled={!!initialSave.error || !canResume} onClick={save} className="w-full p-3 bg-gray-700 rounded disabled:opacity-50">Save World</button>
         <button onClick={load} className="w-full p-3 bg-gray-700 rounded">Load World</button>
+        <button onClick={toggleSound} aria-pressed={!soundMuted} className="w-full p-3 bg-gray-700 rounded">Sound: {soundMuted ? 'Off' : 'On'}</button>
         <button onClick={startNew} className="w-full p-3 bg-red-800 rounded">New World</button>
       </div>
       {message && <p role="status" className="mt-4">{message}</p>}
