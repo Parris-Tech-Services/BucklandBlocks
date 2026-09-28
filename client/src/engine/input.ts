@@ -19,9 +19,10 @@ type Action =
 
 export function createGameInput() {
   const held = new Set<string>();
+  const pressed = new Set<string>();
 
   return {
-    clear: () => held.clear(),
+    clear: () => { held.clear(); pressed.clear(); },
 
     key(code: string, down: boolean, active: boolean) {
       if (!(code in bindings)) return false;
@@ -45,7 +46,15 @@ export function createGameInput() {
         held.delete(key);
       } else if (active) {
         held.add(key);
+        pressed.add(key);
       }
+      return active;
+    },
+
+    consumeMousePress(action: "mine" | "place") {
+      if (!pressed.has(action)) return false;
+      pressed.delete(action);
+      return true;
     },
 
     read(): Record<Action, boolean> {
