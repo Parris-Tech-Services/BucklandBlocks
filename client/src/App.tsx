@@ -151,12 +151,25 @@ function Game() {
 
     try {
       const request = canvas.requestPointerLock();
-      void Promise.resolve(request).catch(() => {
-        useSession.setState({
-          menu: "pause",
-          error: "Mouse capture failed. Click Resume to try again.",
-        });
-      });
+      if (
+        request &&
+        typeof (request as PromiseLike<void>).then === "function"
+      ) {
+        void Promise.resolve(request)
+          .then(() => {
+            useSession.setState({
+              menu: null,
+              pointerLocked: true,
+              error: null,
+            });
+          })
+          .catch(() => {
+            useSession.setState({
+              menu: "pause",
+              error: "Mouse capture failed. Click Resume to try again.",
+            });
+          });
+      }
     } catch {
       useSession.setState({
         error: "Mouse capture is unavailable in this browser.",
