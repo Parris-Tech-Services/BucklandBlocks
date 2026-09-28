@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ArrowRight, X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
+import { quickMoveSlot } from '../engine/inventory';
 import recipesData from '../data/recipes.json';
 
 interface InventoryProps {
@@ -88,6 +89,14 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     const type = items[index];
     const count = counts[index];
     const rightClick = event.button === 2 || event.type === 'contextmenu';
+
+    // Shift-click with an empty cursor quick-moves the stack between the
+    // hotbar and the main inventory.
+    if (!nextCursor && event.shiftKey && grid === 'inventory' && type !== null) {
+      const moved = quickMoveSlot(items, counts, index, getBlockData(type)?.maxStack ?? 64);
+      if (moved.moved > 0) useGame.setState(writeGrid('inventory', moved.items, moved.counts));
+      return;
+    }
 
     if (nextCursor) {
       if (type === null) {

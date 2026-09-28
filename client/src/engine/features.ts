@@ -7,7 +7,11 @@
 // When a feature is ready for everyone, flip its default to true below.
 
 export const FEATURE_DEFAULTS = {
-  // e.g. newinventory: false,
+  // Equipment + 2x2 crafting inventory panels (PR #25). On by default as a
+  // deliberate exception to "start off": it restores a screen Josh asked for
+  // and passed a full end-to-end check on a deployed preview. Kill switch:
+  // ?features=-inventorypanels shows the previous inventory screen.
+  inventorypanels: true,
 } satisfies Record<string, boolean>;
 
 export type Feature = keyof typeof FEATURE_DEFAULTS;

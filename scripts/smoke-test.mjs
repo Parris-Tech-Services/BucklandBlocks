@@ -67,11 +67,13 @@ try {
   // inventory crafting grid and back without switching menus or losing count.
   const hotbar = page.getByRole("region", { name: "Hotbar" });
   const craftingGrid = page.locator('[aria-label="2 by 2 crafting grid"]');
-  const planks = hotbar.getByRole("button", { name: /Wood Planks × 64/ });
+  // Gameplay above may have placed a plank, so match any count.
+  const planks = hotbar.getByRole("button", { name: /^Wood Planks × \d+$/ });
   await planks.dragTo(craftingGrid.getByRole("button").nth(0));
-  await craftingGrid.getByRole("button", { name: /Wood Planks × 64/ }).waitFor({ timeout: 5_000 });
-  await craftingGrid.getByRole("button", { name: /Wood Planks × 64/ }).dragTo(hotbar.getByRole("button").nth(8));
-  await hotbar.getByRole("button", { name: /Wood Planks × 64/ }).waitFor({ timeout: 5_000 });
+  const movedPlanks = craftingGrid.getByRole("button", { name: /^Wood Planks × \d+$/ });
+  await movedPlanks.waitFor({ timeout: 5_000 });
+  await movedPlanks.dragTo(hotbar.getByRole("button").nth(8));
+  await hotbar.getByRole("button", { name: /^Wood Planks × \d+$/ }).waitFor({ timeout: 5_000 });
 
   await page.keyboard.press("KeyE");
   await page.waitForTimeout(3000);
