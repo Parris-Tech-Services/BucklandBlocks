@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { gameInput } from "./input";
@@ -7,6 +6,7 @@ import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
 import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
 import { heldTool, idleMining, stepMining } from "./mining";
+import { createHitTimer, playBreak, playHit, playPlace } from "./sfx";
 import { hasSolidSupport } from "./placement";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
@@ -113,12 +113,10 @@ const Player: React.FC = () => {
     inventory,
     inventoryCounts,
     addToInventory,
-    addDroppedItem,
     removeFromInventory,
     setBlock,
     getBlock,
     getChunk,
-    markChunkDirty,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -127,6 +125,7 @@ const Player: React.FC = () => {
   const lastActionRef = useRef(0);
   const miningProgressRef = useRef(0);
   const miningRef = useRef(idleMining());
+  const hitTimerRef = useRef(createHitTimer());
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -250,6 +249,10 @@ const Player: React.FC = () => {
     }
 
     const keys = gameInput.read();
+    const minePress = gameInput.consumeMousePress("mine");
+    const placePress = gameInput.consumeMousePress("place");
+    const mineActive = keys.mine || minePress;
+    const placeActive = keys.place || placePress;
     const velocity = velocityRef.current;
 
     const direction = new THREE.Vector3();
@@ -351,11 +354,17 @@ const Player: React.FC = () => {
     const broke = stepMining(
       miningRef.current,
       miningTarget,
-      keys.mine,
+      mineActive,
       heldTool(inventory[selectedSlot]),
       delta,
     );
     miningProgressRef.current = miningRef.current.progress;
+
+    const canSoundMine =
+      !!miningTarget && miningTarget.blockType !== BlockType.WATER && mineActive;
+    if (hitTimerRef.current(canSoundMine, delta) && raycast) {
+      playHit(raycast.blockType);
+    }
 
     if (broke && raycast) {
       lastActionRef.current = now;
@@ -363,16 +372,13 @@ const Player: React.FC = () => {
       const { x, y, z } = raycast.position;
       const blockType = raycast.blockType;
 
+      playBreak(blockType);
       setBlock(
         Math.floor(x),
         Math.floor(y),
         Math.floor(z),
         BlockType.AIR,
       );
-
-      const chunkX = Math.floor(Math.floor(x) / 16);
-      const chunkZ = Math.floor(Math.floor(z) / 16);
-      markChunkDirty(chunkX, chunkZ);
 
       const drops = getBlockDrops(blockType);
       drops.forEach((drop) => {
@@ -381,7 +387,7 @@ const Player: React.FC = () => {
     }
 
     if (
-      keys.place &&
+      placeActive &&
       raycast &&
       now - lastActionRef.current > 200
     ) {
@@ -437,10 +443,7 @@ const Player: React.FC = () => {
             Math.floor(z),
             selectedBlockType,
           );
-
-          const chunkX = Math.floor(Math.floor(x) / 16);
-          const chunkZ = Math.floor(Math.floor(z) / 16);
-          markChunkDirty(chunkX, chunkZ);
+          playPlace(selectedBlockType);
 
           removeFromInventory(selectedSlot, 1);
         }
