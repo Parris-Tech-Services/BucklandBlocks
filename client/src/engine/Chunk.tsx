@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { useTexture } from "@react-three/drei";
 import { createBlockMesh } from "./mesher";
@@ -42,14 +42,10 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
   const chunkData = chunks.get(chunkKey);
   const voxelData = chunkData?.voxelData;
 
-  if (!voxelData) return null;
-
-  const { geometry, materials } = useMemo(() => {
-  const geo = createBlockMesh(voxelData, size);
-    // normals for proper lighting
-    geo.computeVertexNormals();
-
-    const mats: THREE.Material[] = [
+  // Materials depend only on the textures, so build them once per chunk
+  // rather than on every remesh, and free them when the chunk unloads.
+  const materials = useMemo<THREE.Material[]>(
+    () => [
       new THREE.MeshStandardMaterial({ map: textures.dirt, roughness: 0.9, metalness: 0 }),
       new THREE.MeshStandardMaterial({ map: textures.grass, roughness: 0.8, metalness: 0 }),
       new THREE.MeshStandardMaterial({ map: textures.stone, roughness: 0.7, metalness: 0.1 }),
@@ -89,24 +85,36 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
         roughness: 0.9,
         metalness: 0.05,
       }),
-    ];
+    ],
+    [
+      textures.dirt,
+      textures.grass,
+      textures.stone,
+      textures.wood,
+      textures.sand,
+      textures.sky,
+      textures.craftingTable,
+      textures.chest,
+      textures.furnace,
+    ],
+  );
+  useEffect(() => () => materials.forEach((material) => material.dispose()), [materials]);
 
+  // Hooks must run on every render, so the missing-chunk case is handled
+  // inside the memo rather than by returning early above it.
+  const geometry = useMemo(() => {
+    if (!voxelData) return null;
+    const geo = createBlockMesh(voxelData, size);
+    // normals for proper lighting
+    geo.computeVertexNormals();
     if (chunkData?.dirty) chunkData.dirty = false;
-    return { geometry: geo, materials: mats };
-  }, [
-    voxelData,
-    size,
-    textures.dirt,
-    textures.grass,
-    textures.stone,
-    textures.wood,
-    textures.sand,
-    textures.sky,
-    textures.craftingTable,
-    textures.chest,
-    textures.furnace,
-    chunkData,
-  ]);
+    return geo;
+  }, [voxelData, size, chunkData]);
+  // Free the previous mesh on every rebuild and on unload; without this
+  // streaming chunks leak GPU memory until the WebGL context is lost.
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+
+  if (!geometry) return null;
 
   return (
     <mesh
