@@ -6,15 +6,19 @@ interface Session {
   menu: Menu;
   pointerLocked: boolean;
   error: string | null;
+  hudVisible: boolean;
   currentEntityId?: string;
   setMenu: (menu: Menu) => void;
+  toggleHud: () => void;
 }
 
 export const useSession = create<Session>((set) => ({
   menu: "pause",
   pointerLocked: false,
   error: null,
+  hudVisible: true,
   setMenu: (menu) => set({ menu }),
+  toggleHud: () => set((state) => ({ hudVisible: !state.hudVisible })),
 }));
 
 export const isGameplayActive = () => {
