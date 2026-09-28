@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BlockType, getBlockData } from "../engine/blocks";
 import { useGame } from "../lib/stores/useGame";
+import { useSession } from "../engine/session";
 
 const GameHUD: React.FC = () => {
   // All data comes from the store (updated by the in-Canvas HooksBridge)
@@ -28,7 +29,7 @@ const GameHUD: React.FC = () => {
   }, [selectedSlot, inventory]);
 
   // Same time-of-day display you had
-  const timeOfDay = Math.floor((gameTime / 1000) % 24);
+  const timeOfDay = Math.floor(((gameTime % 24000) / 24000) * 24);
   const isNight = timeOfDay >= 18 || timeOfDay < 6;
 
   return (
@@ -93,7 +94,7 @@ const GameHUD: React.FC = () => {
               >
                 {blockType !== null && blockType !== BlockType.AIR && (
                   <>
-                    <img src={getBlockData(blockType)?.texture} className="w-full h-full object-cover pixelated p-1" alt="" />
+                    <img src={getBlockData(blockType)?.texture} className="w-full h-full object-contain pixelated p-1" alt="" />
                     <div className="absolute top-0 left-0 right-0 truncate bg-black/60 px-0.5 text-[7px] font-bold leading-3" style={{ textShadow: '1px 1px 0 #000' }}>
                       {getBlockData(blockType)?.name}
                     </div>
