@@ -40,7 +40,30 @@ const Player: React.FC = () => {
   const velocityRef = useRef(new THREE.Vector3());
   const onGroundRef = useRef(false);
   const [targetBlock, setTargetBlock] = useState<RaycastHit | null>(null);
+  const [miningProgress, setLocalMiningProgress] = useState(0);
+  const miningTargetRef = useRef<string | null>(null);
+  const miningStartedAtRef = useRef(0);
   const lastActionRef = useRef(0);
+
+  const updateMiningProgress = (
+    progress: number,
+    active: boolean,
+    label: string,
+  ) => {
+    const clampedProgress = Math.max(0, Math.min(1, progress));
+    setLocalMiningProgress(clampedProgress);
+    useGame.getState().setMiningProgress({
+      active,
+      progress: clampedProgress,
+      label,
+    });
+  };
+
+  const clearMiningProgress = () => {
+    miningTargetRef.current = null;
+    miningStartedAtRef.current = 0;
+    updateMiningProgress(0, false, "");
+  };
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -75,6 +98,7 @@ const Player: React.FC = () => {
         velocityRef.current.set(0, 0, 0);
         gameInput.clear();
         setTargetBlock(null);
+        clearMiningProgress();
         useGame.setState({
           playerPosition: camera.position.clone(),
           playerRotation: {
@@ -259,7 +283,7 @@ const Player: React.FC = () => {
 
     const now = Date.now();
 
-    if (keys.mine && raycast && now - lastActionRef.current > 200) {
+    if (keys.mine && raycast) {
       const { x, y, z } = raycast.position;
       const blockType = raycast.blockType;
       const targetData = getBlockData(blockType);
@@ -268,12 +292,40 @@ const Player: React.FC = () => {
         : getBlockData(inventory[selectedSlot]!);
       const hasRequiredTool = !targetData.toolRequired ||
         heldData?.toolType === targetData.toolRequired;
+      const targetKey = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
 
       // Water is a fluid, not a voxel resource. It cannot be removed by
       // ordinary mining, and required tools must be held for hard blocks.
-      if (blockType === BlockType.WATER || !hasRequiredTool) {
-        // Keep the target intact until the player selects the right tool.
+      if (blockType === BlockType.WATER) {
+        clearMiningProgress();
+        useGame.getState().setMiningProgress({
+          active: true,
+          progress: 0,
+          label: "Water cannot be mined",
+        });
+      } else if (!hasRequiredTool) {
+        clearMiningProgress();
+        useGame.getState().setMiningProgress({
+          active: true,
+          progress: 0,
+          label: targetData.toolRequired
+            ? `Requires a ${targetData.toolRequired}`
+            : "Select the correct tool",
+        });
       } else {
+        if (miningTargetRef.current !== targetKey) {
+          miningTargetRef.current = targetKey;
+          miningStartedAtRef.current = now;
+        }
+
+        // Harder blocks take longer. Tools make the intended action clear but
+        // currently do not change the base timing.
+        const miningDuration = Math.max(350, targetData.hardness * 650);
+        const progress = (now - miningStartedAtRef.current) / miningDuration;
+        updateMiningProgress(progress, true, `Mining ${targetData.name}`);
+
+        if (progress < 1 || now - lastActionRef.current <= 200) return;
+
         lastActionRef.current = now;
 
         setBlock(
@@ -289,7 +341,10 @@ const Player: React.FC = () => {
 
         const drops = getBlockDrops(blockType);
         drops.forEach((drop) => addToInventory(drop.id, drop.count));
+        clearMiningProgress();
       }
+    } else if (!keys.mine) {
+      clearMiningProgress();
     }
 
     if (
@@ -356,21 +411,29 @@ const Player: React.FC = () => {
   return (
     <>
       {targetBlock && targetBlock.distance > 0.25 && (
-        <mesh
+        <group
           position={[
             targetBlock.position.x + 0.5,
             targetBlock.position.y + 0.5,
             targetBlock.position.z + 0.5,
           ]}
         >
-          <boxGeometry args={[1.01, 1.01, 1.01]} />
-          <meshBasicMaterial
-            color="white"
-            wireframe
-            opacity={0.5}
-            transparent
-          />
-        </mesh>
+          <mesh>
+            <boxGeometry args={[1.01, 1.01, 1.01]} />
+            <meshBasicMaterial color="white" wireframe opacity={0.5} transparent />
+          </mesh>
+          {miningProgress > 0 && (
+            <mesh scale={1 + miningProgress * 0.08}>
+              <boxGeometry args={[1.02, 1.02, 1.02]} />
+              <meshBasicMaterial
+                color="#ef4444"
+                wireframe
+                opacity={0.25 + miningProgress * 0.65}
+                transparent
+              />
+            </mesh>
+          )}
+        </group>
       )}
     </>
   );

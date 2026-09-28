@@ -25,7 +25,13 @@ interface GameState {
   gameTime: number;
   // FPS
   fps: number;
+  miningProgress: {
+    active: boolean;
+    progress: number;
+    label: string;
+  };
   setFps: (v: number) => void;
+  setMiningProgress: (progress: GameState["miningProgress"]) => void;
   // Actions
   start: () => void;
   restart: () => void;
@@ -110,7 +116,9 @@ export const useGame = create<GameState>()(
       gameTime: savedGame?.gameTime || 0,
       
   fps: 0,
+  miningProgress: { active: false, progress: 0, label: "" },
   setFps: (v: number) => set({ fps: v }),
+  setMiningProgress: (miningProgress) => set({ miningProgress }),
   start: () => {
       set((state) => {
         if (state.phase === "ready") {

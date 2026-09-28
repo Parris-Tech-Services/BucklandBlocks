@@ -11,6 +11,7 @@ const GameHUD: React.FC = () => {
     gameTime,
     playerPosition,
     fps,
+    miningProgress,
   } = useGame();
 
   // Same time-of-day display you had
@@ -26,6 +27,25 @@ const GameHUD: React.FC = () => {
           <div className="absolute top-1/2 left-1/2 w-4 h-0.5 bg-white -translate-x-1/2 -translate-y-1/2" />
         </div>
       </div>
+
+      {miningProgress.active && (
+        <div className="absolute top-1/2 left-1/2 mt-8 -translate-x-1/2 rounded bg-black/75 px-3 py-2 text-center text-white shadow-lg">
+          <div className="text-xs font-semibold">{miningProgress.label}</div>
+          {miningProgress.progress > 0 && (
+            <>
+              <div className="mt-1 h-2 w-40 overflow-hidden rounded bg-gray-700">
+                <div
+                  className="h-full bg-red-500 transition-[width] duration-75"
+                  style={{ width: `${Math.round(miningProgress.progress * 100)}%` }}
+                />
+              </div>
+              <div className="mt-1 text-[10px]">
+                Hold LMB · {Math.round(miningProgress.progress * 100)}%
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* HUD Info */}
       <div className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded font-mono text-sm">
