@@ -1,0 +1,25 @@
+name: Buckland Blocks integration gates
+
+on:
+  push:
+    branches: [main, "codex/**", "fix/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: node --import tsx server/index.ts > /tmp/buckland-server.log 2>&1 &
+      - run: npx playwright test
