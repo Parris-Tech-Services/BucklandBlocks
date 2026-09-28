@@ -9,6 +9,7 @@ export type GamePhase = "ready" | "playing" | "ended";
 interface ChunkData {
   voxelData: Uint8Array;
   dirty: boolean;
+  revision: number;
 }
 
 
@@ -101,6 +102,22 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   return [inventory, counts];
 };
 
+const bumpChunk = (
+  chunks: Map<string, ChunkData>,
+  chunkX: number,
+  chunkZ: number,
+  markDirty = false,
+) => {
+  const key = `${chunkX},${chunkZ}`;
+  const chunk = chunks.get(key);
+  if (!chunk) return;
+  chunks.set(key, {
+    ...chunk,
+    dirty: chunk.dirty || markDirty,
+    revision: chunk.revision + 1,
+  });
+};
+
 const ensureStarterTools = (
   savedSlots: (BlockType | null)[] | undefined,
   savedCounts: number[] | undefined,
@@ -144,7 +161,9 @@ export const useGame = create<GameState>()(
       savedGame.chunks.forEach((chunk) => {
         initialChunks.set(`${chunk.x},${chunk.z}`, {
           voxelData: new Uint8Array(chunk.voxelData),
-          dirty: false,
+          // Saved chunks are persistent overrides and must remain saveable.
+          dirty: true,
+          revision: 0,
         });
       });
     }
@@ -300,77 +319,104 @@ export const useGame = create<GameState>()(
     
     // World actions
     setBlock: (x: number, y: number, z: number, blockType: BlockType) => {
+      const blockX = Math.floor(x);
+      const blockY = Math.floor(y);
+      const blockZ = Math.floor(z);
+      if (blockY < 0 || blockY >= 128) return;
+
       const chunkSize = 16;
-      const chunkX = Math.floor(x / chunkSize);
-      const chunkZ = Math.floor(z / chunkSize);
+      const chunkX = Math.floor(blockX / chunkSize);
+      const chunkZ = Math.floor(blockZ / chunkSize);
+      const localX = blockX - chunkX * chunkSize;
+      const localZ = blockZ - chunkZ * chunkSize;
       const chunkKey = `${chunkX},${chunkZ}`;
-      
-      const state = get();
-      const chunk = state.chunks.get(chunkKey);
-      
-      if (chunk) {
-        const localX = x - chunkX * chunkSize;
-        const localZ = z - chunkZ * chunkSize;
-        const localY = y;
-        
-        const index = localX + localY * chunkSize + localZ * chunkSize * 128;
+
+      set((state) => {
+        const chunk = state.chunks.get(chunkKey);
+        if (!chunk) return {};
+
+        const index =
+          localX +
+          blockY * chunkSize +
+          localZ * chunkSize * 128;
+        if (chunk.voxelData[index] === blockType) return {};
+
+        const newChunks = new Map(state.chunks);
         const newVoxelData = new Uint8Array(chunk.voxelData);
         newVoxelData[index] = blockType;
-        
-        const newChunks = new Map(state.chunks);
-        newChunks.set(chunkKey, { voxelData: newVoxelData, dirty: true });
-        
-        set({ chunks: newChunks });
-      }
-    },
-    
-    getBlock: (x: number, y: number, z: number): BlockType => {
-      const chunkSize = 16;
-      const chunkX = Math.floor(x / chunkSize);
-      const chunkZ = Math.floor(z / chunkSize);
-      const chunkKey = `${chunkX},${chunkZ}`;
-      
-      const state = get();
-      const chunk = state.chunks.get(chunkKey);
-      
-      if (chunk) {
-        const localX = x - chunkX * chunkSize;
-        const localZ = z - chunkZ * chunkSize;
-        const localY = y;
-        
-        const index = localX + localY * chunkSize + localZ * chunkSize * 128;
-        return chunk.voxelData[index] || BlockType.AIR;
-      }
-      
-      return BlockType.AIR;
-    },
-    
-    setChunk: (chunkX: number, chunkZ: number, voxelData: Uint8Array) => {
-      const chunkKey = `${chunkX},${chunkZ}`;
-      set((state) => {
-        const newChunks = new Map(state.chunks);
-        newChunks.set(chunkKey, { voxelData, dirty: false });
+
+        newChunks.set(chunkKey, {
+          voxelData: newVoxelData,
+          dirty: true,
+          revision: chunk.revision + 1,
+        });
+
+        if (localX === 0) bumpChunk(newChunks, chunkX - 1, chunkZ);
+        if (localX === chunkSize - 1) bumpChunk(newChunks, chunkX + 1, chunkZ);
+        if (localZ === 0) bumpChunk(newChunks, chunkX, chunkZ - 1);
+        if (localZ === chunkSize - 1) bumpChunk(newChunks, chunkX, chunkZ + 1);
+
         return { chunks: newChunks };
       });
     },
-    
+
+    getBlock: (x: number, y: number, z: number): BlockType => {
+      const blockX = Math.floor(x);
+      const blockY = Math.floor(y);
+      const blockZ = Math.floor(z);
+      if (blockY < 0 || blockY >= 128) return BlockType.AIR;
+
+      const chunkSize = 16;
+      const chunkX = Math.floor(blockX / chunkSize);
+      const chunkZ = Math.floor(blockZ / chunkSize);
+      const chunk = get().chunks.get(`${chunkX},${chunkZ}`);
+      if (!chunk) return BlockType.AIR;
+
+      const localX = blockX - chunkX * chunkSize;
+      const localZ = blockZ - chunkZ * chunkSize;
+      const index =
+        localX +
+        blockY * chunkSize +
+        localZ * chunkSize * 128;
+
+      return (chunk.voxelData[index] ?? BlockType.AIR) as BlockType;
+    },
+
+    setChunk: (chunkX: number, chunkZ: number, voxelData: Uint8Array) => {
+      const chunkKey = `${chunkX},${chunkZ}`;
+      set((state) => {
+        if (state.chunks.has(chunkKey)) return {};
+
+        const newChunks = new Map(state.chunks);
+        newChunks.set(chunkKey, {
+          voxelData,
+          dirty: false,
+          revision: 0,
+        });
+
+        bumpChunk(newChunks, chunkX - 1, chunkZ);
+        bumpChunk(newChunks, chunkX + 1, chunkZ);
+        bumpChunk(newChunks, chunkX, chunkZ - 1);
+        bumpChunk(newChunks, chunkX, chunkZ + 1);
+
+        return { chunks: newChunks };
+      });
+    },
+
     getChunk: (chunkX: number, chunkZ: number): Uint8Array | null => {
-      const chunkKey = `${chunkX},${chunkZ}`;
-      const state = get();
-      return state.chunks.get(chunkKey)?.voxelData || null;
+      return get().chunks.get(`${chunkX},${chunkZ}`)?.voxelData ?? null;
     },
-    
+
     markChunkDirty: (chunkX: number, chunkZ: number) => {
-      const chunkKey = `${chunkX},${chunkZ}`;
-      const state = get();
-      const chunk = state.chunks.get(chunkKey);
-      
-      if (chunk) {
-        chunk.dirty = true;
-        set({ chunks: new Map(state.chunks) });
-      }
+      set((state) => {
+        const chunkKey = `${chunkX},${chunkZ}`;
+        if (!state.chunks.has(chunkKey)) return {};
+        const newChunks = new Map(state.chunks);
+        bumpChunk(newChunks, chunkX, chunkZ, true);
+        return { chunks: newChunks };
+      });
     },
-    
+
     // Time
     updateGameTime: (delta: number) => {
       set((state) => ({
