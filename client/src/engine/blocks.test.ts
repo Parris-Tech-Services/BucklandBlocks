@@ -12,6 +12,9 @@ test("starter tools have the correct mining roles", () => {
   assert.equal(getBlockData(BlockType.AXE).toolType, "axe");
   assert.equal(getBlockData(BlockType.SHOVEL).toolType, "shovel");
   assert.equal(getBlockData(BlockType.STONE).toolRequired, "pickaxe");
-  assert.equal(getBlockData(BlockType.WOOD_LOG).toolRequired, "axe");
-  assert.equal(getBlockData(BlockType.SAND).toolRequired, "shovel");
+});
+
+test("wood and sand can be gathered by hand, like Minecraft", () => {
+  assert.equal(getBlockData(BlockType.WOOD_LOG).toolRequired, undefined);
+  assert.equal(getBlockData(BlockType.SAND).toolRequired, undefined);
 });

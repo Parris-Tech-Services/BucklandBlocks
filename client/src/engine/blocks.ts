@@ -92,7 +92,6 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
-    toolRequired: "axe",
     drops: [{ id: BlockType.WOOD_LOG, count: 1 }],
   },
   [BlockType.WOOD_PLANK]: {
@@ -104,7 +103,6 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
-    toolRequired: "axe",
     drops: [{ id: BlockType.WOOD_PLANK, count: 1 }],
   },
   [BlockType.LEAF]: {
@@ -138,6 +136,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
+    toolRequired: "pickaxe",
     drops: [{ id: BlockType.BRICK, count: 1 }],
   },
   [BlockType.TORCH]: {
@@ -170,7 +169,6 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
-    toolRequired: "shovel",
     drops: [{ id: BlockType.SAND, count: 1 }],
   },
   [BlockType.COBBLESTONE]: {
@@ -182,6 +180,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
+    toolRequired: "pickaxe",
     drops: [{ id: BlockType.COBBLESTONE, count: 1 }],
   },
   [BlockType.DOOR_BOTTOM]: {

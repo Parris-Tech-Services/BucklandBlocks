@@ -5,6 +5,7 @@ import { gameInput } from "./input";
 import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
 import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
+import { heldTool, idleMining, stepMining } from "./mining";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -41,6 +42,8 @@ const Player: React.FC = () => {
   const onGroundRef = useRef(false);
   const [targetBlock, setTargetBlock] = useState<RaycastHit | null>(null);
   const lastActionRef = useRef(0);
+  const miningRef = useRef(idleMining());
+  const crackMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -259,37 +262,45 @@ const Player: React.FC = () => {
 
     const now = Date.now();
 
-    if (keys.mine && raycast && now - lastActionRef.current > 200) {
+    const miningTarget =
+      raycast && raycast.distance > 0.25
+        ? {
+            key: `${raycast.position.x},${raycast.position.y},${raycast.position.z}`,
+            blockType: raycast.blockType,
+          }
+        : null;
+    // Hold to mine: soft blocks break instantly, wood and stone take effort,
+    // and the matching tool speeds them up (see mining.ts).
+    const broke = stepMining(
+      miningRef.current,
+      miningTarget,
+      keys.mine,
+      heldTool(inventory[selectedSlot]),
+      delta,
+    );
+    if (crackMaterialRef.current) {
+      crackMaterialRef.current.opacity = miningRef.current.progress * 0.7;
+    }
+
+    if (broke && raycast) {
+      lastActionRef.current = now;
+
       const { x, y, z } = raycast.position;
       const blockType = raycast.blockType;
-      const targetData = getBlockData(blockType);
-      const heldData = inventory[selectedSlot] === null
-        ? null
-        : getBlockData(inventory[selectedSlot]!);
-      const hasRequiredTool = !targetData.toolRequired ||
-        heldData?.toolType === targetData.toolRequired;
 
-      // Water is a fluid, not a voxel resource. It cannot be removed by
-      // ordinary mining, and required tools must be held for hard blocks.
-      if (blockType === BlockType.WATER || !hasRequiredTool) {
-        // Keep the target intact until the player selects the right tool.
-      } else {
-        lastActionRef.current = now;
+      setBlock(
+        Math.floor(x),
+        Math.floor(y),
+        Math.floor(z),
+        BlockType.AIR,
+      );
 
-        setBlock(
-          Math.floor(x),
-          Math.floor(y),
-          Math.floor(z),
-          BlockType.AIR,
-        );
+      const chunkX = Math.floor(Math.floor(x) / 16);
+      const chunkZ = Math.floor(Math.floor(z) / 16);
+      markChunkDirty(chunkX, chunkZ);
 
-        const chunkX = Math.floor(Math.floor(x) / 16);
-        const chunkZ = Math.floor(Math.floor(z) / 16);
-        markChunkDirty(chunkX, chunkZ);
-
-        const drops = getBlockDrops(blockType);
-        drops.forEach((drop) => addToInventory(drop.id, drop.count));
-      }
+      const drops = getBlockDrops(blockType);
+      drops.forEach((drop) => addToInventory(drop.id, drop.count));
     }
 
     if (
@@ -369,6 +380,25 @@ const Player: React.FC = () => {
             wireframe
             opacity={0.5}
             transparent
+          />
+        </mesh>
+      )}
+      {targetBlock && targetBlock.distance > 0.25 && (
+        <mesh
+          position={[
+            targetBlock.position.x + 0.5,
+            targetBlock.position.y + 0.5,
+            targetBlock.position.z + 0.5,
+          ]}
+        >
+          {/* Darkens as the block is mined, like Minecraft's crack overlay. */}
+          <boxGeometry args={[1.02, 1.02, 1.02]} />
+          <meshBasicMaterial
+            ref={crackMaterialRef}
+            color="black"
+            opacity={0}
+            transparent
+            depthWrite={false}
           />
         </mesh>
       )}
