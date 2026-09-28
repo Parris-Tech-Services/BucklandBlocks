@@ -83,8 +83,36 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   counts[1] = 64;
   inventory[2] = BlockType.COBBLESTONE;
   counts[2] = 64;
+  inventory[3] = BlockType.PICKAXE;
+  counts[3] = 1;
+  inventory[4] = BlockType.AXE;
+  counts[4] = 1;
+  inventory[5] = BlockType.SHOVEL;
+  counts[5] = 1;
+  inventory[6] = BlockType.SWORD;
+  counts[6] = 1;
   
   return [inventory, counts];
+};
+
+const ensureStarterTools = (
+  savedSlots: (BlockType | null)[] | undefined,
+  savedCounts: number[] | undefined,
+  fallbackSlots: (BlockType | null)[],
+  fallbackCounts: number[],
+): [(BlockType | null)[], number[]] => {
+  const slots = savedSlots ? [...savedSlots] : [...fallbackSlots];
+  const counts = savedCounts ? [...savedCounts] : [...fallbackCounts];
+  for (const tool of [BlockType.PICKAXE, BlockType.AXE, BlockType.SHOVEL, BlockType.SWORD]) {
+    const existing = slots.findIndex((item, index) => item === tool && (counts[index] ?? 0) > 0);
+    if (existing !== -1) continue;
+    const empty = slots.findIndex((item, index) => item === null || (counts[index] ?? 0) <= 0);
+    if (empty !== -1) {
+      slots[empty] = tool;
+      counts[empty] = 1;
+    }
+  }
+  return [slots, counts];
 };
 
 // A failed read remains visible and never deletes the original save.
@@ -98,6 +126,12 @@ export const useGame = create<GameState>()(
   subscribeWithSelector((set, get) => {
     const savedGame = initialSave.data;
     const [initialInventory, initialCounts] = initializeInventory();
+    const [loadedInventory, loadedInventoryCounts] = ensureStarterTools(
+      savedGame?.inventory?.slots,
+      savedGame?.inventory?.counts,
+      initialInventory,
+      initialCounts,
+    );
     
     const initialChunks = new Map<string, ChunkData>();
     if (savedGame?.chunks) {
@@ -119,8 +153,8 @@ export const useGame = create<GameState>()(
       playerRotation: savedGame?.playerRotation || { x: 0, y: 0 },
       
       // Initial inventory (9 hotbar + 27 main = 36 total)
-      inventory: savedGame?.inventory?.slots || initialInventory,
-      inventoryCounts: savedGame?.inventory?.counts || initialCounts,
+      inventory: loadedInventory,
+      inventoryCounts: loadedInventoryCounts,
       armor: savedGame?.armor || new Array(4).fill(null),
       droppedItems: savedGame?.droppedItems || [],
       blockEntities: savedGame?.blockEntities || {},
@@ -333,4 +367,3 @@ export const useGame = create<GameState>()(
     },
   };})
 );
-

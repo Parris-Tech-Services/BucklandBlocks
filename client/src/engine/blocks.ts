@@ -36,6 +36,11 @@ export interface BlockData {
   emissive: boolean;
   liquid: boolean;
   solid: boolean;
+  placeable?: boolean;
+  maxStack?: number;
+  maxDurability?: number;
+  isTool?: boolean;
+  toolType?: "pickaxe" | "axe" | "shovel" | "sword";
   toolRequired?: string;
   drops?: { id: BlockType; count: number }[];
 }
@@ -66,6 +71,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     maxStack: 1,
     maxDurability: 60,
     isTool: true,
+    toolType: "pickaxe",
   },
   [BlockType.SWORD]: {
     id: BlockType.SWORD,
@@ -80,6 +86,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     maxStack: 1,
     maxDurability: 60,
     isTool: true,
+    toolType: "sword",
   },
   [BlockType.AXE]: {
     id: BlockType.AXE,
@@ -94,6 +101,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     maxStack: 1,
     maxDurability: 60,
     isTool: true,
+    toolType: "axe",
   },
   [BlockType.SHOVEL]: {
     id: BlockType.SHOVEL,
@@ -108,6 +116,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     maxStack: 1,
     maxDurability: 60,
     isTool: true,
+    toolType: "shovel",
   },
   [BlockType.CHEST]: {
     id: BlockType.CHEST,

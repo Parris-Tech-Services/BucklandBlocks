@@ -1,10 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { createPortal } from "react-dom";
+import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { gameInput } from "./input";
 import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
-import { BlockType, getBlockDrops, isBlockSolid } from "./blocks";
+import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
+import { heldTool, idleMining, stepMining } from "./mining";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -77,9 +79,7 @@ const BlockDamageOverlay: React.FC<{ targetBlock: any, miningProgressRef: React.
     if (!meshRef.current) return;
     const progress = miningProgressRef.current;
     if (progress > 0 && targetBlock) {
-      const data = getBlockData(targetBlock.blockType);
-      const hardness = data?.hardness ?? 0.5;
-      const ratio = Math.min(1, progress / hardness);
+      const ratio = Math.min(1, progress);
       meshRef.current.visible = true;
       (meshRef.current.material as THREE.MeshBasicMaterial).opacity = ratio * 0.8;
     } else {
@@ -125,7 +125,7 @@ const Player: React.FC = () => {
   const [targetBlock, setTargetBlock] = useState<RaycastHit | null>(null);
   const lastActionRef = useRef(0);
   const miningProgressRef = useRef(0);
-  const miningTargetRef = useRef<THREE.Vector3 | null>(null);
+  const miningRef = useRef(idleMining());
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -344,7 +344,19 @@ const Player: React.FC = () => {
 
     const now = Date.now();
 
-    if (keys.mine && raycast && now - lastActionRef.current > 200) {
+    const miningTarget = raycast && raycast.distance > 0.25
+      ? { key: `${raycast.position.x},${raycast.position.y},${raycast.position.z}`, blockType: raycast.blockType }
+      : null;
+    const broke = stepMining(
+      miningRef.current,
+      miningTarget,
+      keys.mine,
+      heldTool(inventory[selectedSlot]),
+      delta,
+    );
+    miningProgressRef.current = miningRef.current.progress;
+
+    if (broke && raycast) {
       lastActionRef.current = now;
 
       const { x, y, z } = raycast.position;
@@ -363,14 +375,7 @@ const Player: React.FC = () => {
 
       const drops = getBlockDrops(blockType);
       drops.forEach((drop) => {
-        const remaining = addToInventory(drop.id, drop.count);
-        if (remaining > 0) {
-          // Drop the item in the world slightly in front of the player
-          const dropPos = camera.position.clone();
-          const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-          dropPos.add(dir.multiplyScalar(2));
-          addDroppedItem(drop.id, remaining, dropPos);
-        }
+        addToInventory(drop.id, drop.count);
       });
     }
 
@@ -383,7 +388,8 @@ const Player: React.FC = () => {
 
       if (
         selectedBlockType !== null &&
-        inventoryCounts[selectedSlot] > 0
+        inventoryCounts[selectedSlot] > 0 &&
+        getBlockData(selectedBlockType).placeable !== false
       ) {
         lastActionRef.current = now;
 
