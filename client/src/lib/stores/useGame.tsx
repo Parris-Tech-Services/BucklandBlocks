@@ -210,7 +210,10 @@ export const useGame = create<GameState>()(
       setCursorItem: (item) => set({ cursorItem: item }),
       armor: new Array(4).fill(null),
       droppedItems: [],
-      blockEntities: {},
+      // Furnace contents saved with the world, keyed by "x,y,z".
+      blockEntities: Object.fromEntries(
+        (savedGame?.blockEntities ?? []).map((entity) => [entity.id, entity]),
+      ),
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state

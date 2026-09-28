@@ -7,7 +7,9 @@ import { performRaycast, type RaycastHit } from "./raycast";
 import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
 import { heldTool, idleMining, stepMining } from "./mining";
 import { createHitTimer, playBreak, playHit, playPlace } from "./sfx";
+import { blockEntityContents, blockEntityKey, interactionMenuFor, newBlockEntity, resolveRightClick } from "./blockEntities";
 import { hasSolidSupport } from "./placement";
+import { isFeatureOn } from "./features";
 import { getFallDamage } from "./physics";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
@@ -453,7 +455,16 @@ const Player: React.FC = () => {
         BlockType.AIR,
       );
 
-      const drops = getBlockDrops(blockType);
+      // Breaking a furnace also hands back whatever was inside it.
+      const entityKey = blockEntityKey(x, y, z);
+      const { blockEntities, setBlockEntity } = useGame.getState();
+      const contents = blockEntityContents(blockEntities[entityKey]);
+      if (blockEntities[entityKey]) setBlockEntity(entityKey, null);
+
+      const drops = [
+        ...getBlockDrops(blockType),
+        ...contents.map(({ type, count }) => ({ id: type, count })),
+      ];
       drops.forEach((drop) => {
         const remaining = addToInventory(drop.id, drop.count);
         if (remaining > 0) {
@@ -475,6 +486,23 @@ const Player: React.FC = () => {
       raycast &&
       now - lastActionRef.current > 200
     ) {
+      // Right-clicking a crafting table or furnace opens it rather than
+      // placing a block against it (behind the openblocks flag).
+      const game = useGame.getState();
+      const action = resolveRightClick(
+        { blockType: raycast.blockType, ...raycast.position },
+        (key) => Boolean(game.blockEntities[key]),
+      );
+      if (action.kind === "open" && isFeatureOn("openblocks")) {
+        lastActionRef.current = now;
+        if (action.createEntity) {
+          game.setBlockEntity(action.entityKey, newBlockEntity(action.entityKey, raycast.blockType));
+        }
+        gameInput.clear();
+        useSession.setState({ menu: action.menu, currentEntityId: action.entityKey });
+        return;
+      }
+
       const selectedBlockType = inventory[selectedSlot];
 
       if (
@@ -528,6 +556,10 @@ const Player: React.FC = () => {
             selectedBlockType,
           );
           playPlace(selectedBlockType);
+          if (isFeatureOn("openblocks") && interactionMenuFor(selectedBlockType) === "furnace") {
+            const entityKey = blockEntityKey(x, y, z);
+            useGame.getState().setBlockEntity(entityKey, newBlockEntity(entityKey, selectedBlockType));
+          }
 
           removeFromInventory(selectedSlot, 1);
         }

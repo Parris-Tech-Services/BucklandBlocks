@@ -12,6 +12,8 @@ export const FEATURE_DEFAULTS = {
   // and passed a full end-to-end check on a deployed preview. Kill switch:
   // ?features=-inventorypanels shows the previous inventory screen.
   inventorypanels: true,
+  // Right-click opens placed crafting tables and furnaces (PR #27).
+  openblocks: false,
 } satisfies Record<string, boolean>;
 
 export type Feature = keyof typeof FEATURE_DEFAULTS;
