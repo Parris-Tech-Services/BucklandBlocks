@@ -107,7 +107,6 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
     const geo = createBlockMesh(voxelData, size);
     // normals for proper lighting
     geo.computeVertexNormals();
-    if (chunkData?.dirty) chunkData.dirty = false;
     return geo;
   }, [voxelData, size, chunkData]);
   // Free the previous mesh on every rebuild and on unload; without this
