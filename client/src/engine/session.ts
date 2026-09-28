@@ -1,11 +1,12 @@
 import { create } from "zustand";
 
-export type Menu = "pause" | "inventory" | "crafting" | "crafting_table" | null;
+export type Menu = "pause" | "inventory" | "crafting" | "crafting_table" | "furnace" | null;
 
 interface Session {
   menu: Menu;
   pointerLocked: boolean;
   error: string | null;
+  currentEntityId?: string;
   setMenu: (menu: Menu) => void;
 }
 

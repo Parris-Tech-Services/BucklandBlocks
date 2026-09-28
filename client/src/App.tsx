@@ -9,6 +9,7 @@ import GameHUD from "./ui/GameHUD";
 import Inventory from "./ui/Inventory";
 import Crafting from "./ui/Crafting";
 import CraftingTable from "./ui/CraftingTable";
+import FurnaceUI from "./ui/FurnaceUI";
 import PauseMenu from "./ui/PauseMenu";
 import GameErrorBoundary from "./ui/GameErrorBoundary";
 import HooksBridge from "./renderer/HooksBridge";
@@ -231,6 +232,9 @@ function Game() {
       </div>
       <div hidden={menu !== "crafting_table"}>
         <CraftingTable onClose={() => setMenu("pause")} />
+      </div>
+      <div hidden={menu !== "furnace"}>
+        <FurnaceUI onClose={() => setMenu("pause")} />
       </div>
 
       {menu === "pause" && (

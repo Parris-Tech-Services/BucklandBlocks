@@ -21,6 +21,57 @@ const AIR_CONTROL = 0.3;
 const WORLD_HEIGHT = 128;
 const DEFAULT_GROUND_Y = 64;
 
+
+const Hand: React.FC<{ isMining: boolean; miningProgress: number }> = ({ isMining, miningProgress }) => {
+  const { camera } = useThree();
+  const { inventory, selectedSlot } = useGame();
+  const handRef = useRef<THREE.Group>(null);
+  
+  const blockType = inventory[selectedSlot];
+  const blockData = blockType !== null ? getBlockData(blockType) : null;
+  
+  useFrame((state) => {
+    if (!handRef.current) return;
+    const time = state.clock.getElapsedTime();
+    const velocity = useGame.getState().playerPosition ? useGame.getState().playerPosition : new THREE.Vector3(); // wait, Player physics stores velocity in a ref, not state!
+    // We can just use a simple sine wave for idle, and a faster one for walking if we can detect it.
+    // For simplicity, let's just do a constant idle bob + aggressive swing when mining.
+    
+    // Idle breath
+    let targetX = 0.5;
+    let targetY = -0.5 + Math.sin(time * 2) * 0.02;
+    let targetZ = -1;
+    let rotX = 0;
+    let rotZ = 0;
+    
+    if (isMining) {
+      // Swing animation
+      const swing = (miningProgress * 15) % (Math.PI * 2);
+      targetY += Math.sin(swing) * 0.2;
+      targetZ -= Math.sin(swing) * 0.2;
+      rotX = -Math.sin(swing) * 0.5;
+      rotZ = Math.sin(swing) * 0.2;
+    }
+    
+    handRef.current.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.2);
+    handRef.current.rotation.x = THREE.MathUtils.lerp(handRef.current.rotation.x, rotX, 0.2);
+    handRef.current.rotation.z = THREE.MathUtils.lerp(handRef.current.rotation.z, rotZ, 0.2);
+  });
+
+  if (!blockData) return null;
+
+  return createPortal(
+    <group ref={handRef}>
+      {/* 3D Item in hand */}
+      <mesh scale={blockData.isTool ? 0.6 : 0.3} rotation={[0, -Math.PI / 4, 0]}>
+        <boxGeometry />
+        <meshBasicMaterial color={blockData.isTool ? "gray" : "brown"} />
+      </mesh>
+    </group>,
+    camera
+  );
+};
+
 const Player: React.FC = () => {
   const { camera } = useThree();
 
@@ -354,6 +405,7 @@ const Player: React.FC = () => {
 
   return (
     <>
+      <Hand isMining={miningProgressRef.current > 0} miningProgress={miningProgressRef.current} />
       {targetBlock && targetBlock.distance > 0.25 && (
         <mesh
           position={[

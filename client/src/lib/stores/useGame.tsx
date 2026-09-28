@@ -12,6 +12,15 @@ interface ChunkData {
 }
 
 
+
+export interface BlockEntity {
+  id: string; // x,y,z
+  type: BlockType;
+  inventory: (BlockType | null)[];
+  counts: number[];
+  progress: number;
+}
+
 export interface DroppedItem {
   id: string;
   type: BlockType;
@@ -28,6 +37,10 @@ interface GameState {
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
   
+  
+  blockEntities: Record<string, BlockEntity>;
+  setBlockEntity: (id: string, entity: BlockEntity | null) => void;
+
   armor: (BlockType | null)[];
   droppedItems: DroppedItem[];
   addDroppedItem: (type: BlockType, count: number, position: THREE.Vector3) => void;
@@ -110,6 +123,7 @@ export const useGame = create<GameState>()(
       inventoryCounts: savedGame?.inventory?.counts || initialCounts,
       armor: savedGame?.armor || new Array(4).fill(null),
       droppedItems: savedGame?.droppedItems || [],
+      blockEntities: savedGame?.blockEntities || {},
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state
@@ -155,6 +169,12 @@ export const useGame = create<GameState>()(
     },
     
     
+    setBlockEntity: (id, entity) => set((state) => {
+      const newEntities = { ...state.blockEntities };
+      if (entity === null) delete newEntities[id];
+      else newEntities[id] = entity;
+      return { blockEntities: newEntities };
+    }),
     removeDroppedItem: (id) => set((state) => ({ 
       droppedItems: state.droppedItems.filter(item => item.id !== id) 
     })),
