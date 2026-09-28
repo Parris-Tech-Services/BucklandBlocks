@@ -268,7 +268,10 @@ function Game() {
       <GameHUD />
 
       <div hidden={menu !== "inventory"}>
-        <Inventory onClose={resume} />
+        <Inventory
+          onClose={resume}
+          onOpenCrafting={() => setMenu("crafting")}
+        />
       </div>
       <div hidden={menu !== "crafting"}>
         <Crafting onClose={resume} />
