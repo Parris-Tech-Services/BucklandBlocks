@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BlockType, getBlockData } from "../engine/blocks";
 import { useGame } from "../lib/stores/useGame";
 import { useSession } from "../engine/session";
+import { MAX_AIR } from "../engine/breathing";
 
 const GameHUD: React.FC = () => {
   // All data comes from the store (updated by the in-Canvas HooksBridge)
@@ -52,6 +53,7 @@ const GameHUD: React.FC = () => {
   const timeOfDay = Math.floor(((gameTime % 24000) / 24000) * 24);
   const isNight = timeOfDay >= 18 || timeOfDay < 6;
   const displayedHealth = Math.max(0, Math.min(20, health));
+  const displayedAir = Math.max(0, Math.min(MAX_AIR, air));
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none">
@@ -101,6 +103,39 @@ const GameHUD: React.FC = () => {
       {popupName && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-white font-bold text-xl drop-shadow-md animate-pulse font-mono transition-opacity" style={{ textShadow: '2px 2px 0 #000' }}>
           {popupName}
+        </div>
+      )}
+
+      {/* Underwater feedback */}
+      {submerged && (
+        <div className="absolute inset-0 bg-blue-900/15" aria-hidden="true" />
+      )}
+
+      {(submerged || displayedAir < MAX_AIR) && (
+        <div
+          className="absolute bottom-[6.1rem] left-1/2 -translate-x-1/2 flex gap-1 rounded bg-black/35 px-1.5 py-1"
+          role="img"
+          aria-label={`Air: ${displayedAir} out of ${MAX_AIR}`}
+        >
+          {Array.from({ length: 10 }, (_, i) => {
+            const bubbleAir = Math.max(
+              0,
+              Math.min(2, displayedAir - i * 2),
+            );
+            return (
+              <span
+                key={i}
+                className={`h-3 w-3 rounded-full border border-cyan-100 ${
+                  bubbleAir === 2
+                    ? "bg-cyan-200"
+                    : bubbleAir === 1
+                      ? "bg-cyan-200/50"
+                      : "bg-transparent"
+                }`}
+                aria-hidden="true"
+              />
+            );
+          })}
         </div>
       )}
 
