@@ -34,7 +34,6 @@ const Player: React.FC = () => {
     setBlock,
     getBlock,
     getChunk,
-    markChunkDirty,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -272,10 +271,6 @@ const Player: React.FC = () => {
         BlockType.AIR,
       );
 
-      const chunkX = Math.floor(Math.floor(x) / 16);
-      const chunkZ = Math.floor(Math.floor(z) / 16);
-      markChunkDirty(chunkX, chunkZ);
-
       const drops = getBlockDrops(blockType);
       drops.forEach((drop) => addToInventory(drop.id, drop.count));
     }
@@ -329,10 +324,6 @@ const Player: React.FC = () => {
             Math.floor(z),
             selectedBlockType,
           );
-
-          const chunkX = Math.floor(Math.floor(x) / 16);
-          const chunkZ = Math.floor(Math.floor(z) / 16);
-          markChunkDirty(chunkX, chunkZ);
 
           removeFromInventory(selectedSlot, 1);
         }
