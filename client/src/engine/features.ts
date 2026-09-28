@@ -12,6 +12,8 @@ export const FEATURE_DEFAULTS = {
   // and passed a full end-to-end check on a deployed preview. Kill switch:
   // ?features=-inventorypanels shows the previous inventory screen.
   inventorypanels: true,
+  // Pause-menu Sound on/off setting, remembered per browser (PR #29).
+  soundtoggle: false,
 } satisfies Record<string, boolean>;
 
 export type Feature = keyof typeof FEATURE_DEFAULTS;

@@ -60,6 +60,43 @@ export function setSfxMuted(value: boolean) {
   muted = value;
 }
 
+export function isSfxMuted(): boolean {
+  return muted;
+}
+
+/** Per-browser sound preference; a convenience, so storage failures fall back to sound on. */
+export const SOUND_PREFERENCE_KEY = "buckland_sound";
+
+export function readSoundEnabled(storage: Pick<Storage, "getItem"> | undefined): boolean {
+  try {
+    return storage?.getItem(SOUND_PREFERENCE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function saveSoundEnabled(enabled: boolean, storage: Pick<Storage, "setItem"> | undefined): void {
+  try {
+    storage?.setItem(SOUND_PREFERENCE_KEY, enabled ? "on" : "off");
+  } catch {
+    // Private mode or blocked storage: the choice still applies this session.
+  }
+}
+
+/** Applies the saved preference once at startup. */
+export function initSoundPreference(): void {
+  const storage = typeof window === "undefined" ? undefined : safeLocalStorage();
+  setSfxMuted(!readSoundEnabled(storage));
+}
+
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 export function setSfxVolume(value: number) {
   volume = Math.min(1, Math.max(0, value));
 }
