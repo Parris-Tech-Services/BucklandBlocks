@@ -15,6 +15,8 @@ import GameErrorBoundary from "./ui/GameErrorBoundary";
 import HooksBridge from "./renderer/HooksBridge";
 import { gameInput } from "./engine/input";
 import { isGameplayActive, useSession } from "./engine/session";
+import { useGame } from "./lib/stores/useGame";
+import { cycleHotbarSlot } from "./engine/hotbar";
 import "@fontsource/inter";
 
 function Game() {
@@ -75,6 +77,12 @@ function Game() {
             detail: Number(event.code.slice(-1)) - 1,
           }),
         );
+      } else if (event.code === "KeyQ" && isGameplayActive()) {
+        event.preventDefault();
+        useGame.getState().dropSelectedItem(event.shiftKey);
+      } else if (event.code === "F1") {
+        event.preventDefault();
+        useSession.getState().toggleHud();
       }
     };
 
@@ -92,6 +100,12 @@ function Game() {
     };
     const context = (event: MouseEvent) => {
       if (isGameplayActive()) event.preventDefault();
+    };
+    const wheel = (event: WheelEvent) => {
+      if (!isGameplayActive() || event.deltaY === 0) return;
+      event.preventDefault();
+      const game = useGame.getState();
+      game.setSelectedSlot(cycleHotbarSlot(game.selectedSlot, event.deltaY));
     };
     const visibility = () => {
       if (document.hidden) pause();
@@ -128,6 +142,7 @@ function Game() {
     window.addEventListener("mousedown", mouseDown);
     window.addEventListener("mouseup", mouseUp);
     window.addEventListener("contextmenu", context);
+    window.addEventListener("wheel", wheel, { passive: false });
     window.addEventListener("blur", pause);
     document.addEventListener("visibilitychange", visibility);
     document.addEventListener("pointerlockchange", lock);
@@ -141,6 +156,7 @@ function Game() {
       window.removeEventListener("mousedown", mouseDown);
       window.removeEventListener("mouseup", mouseUp);
       window.removeEventListener("contextmenu", context);
+      window.removeEventListener("wheel", wheel);
       window.removeEventListener("blur", pause);
       document.removeEventListener("visibilitychange", visibility);
       document.removeEventListener("pointerlockchange", lock);
