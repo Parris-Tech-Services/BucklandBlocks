@@ -10,7 +10,7 @@ interface MaterialBucket {
   indices: number[];
 }
 
-const MATERIAL_COUNT = 6;
+const MATERIAL_COUNT = 7;
 
 const materialIndexFor = (blockType: BlockType): number => {
   switch (blockType) {
@@ -33,9 +33,10 @@ const materialIndexFor = (blockType: BlockType): number => {
     case BlockType.SAND:
       return 4;
     case BlockType.GLASS:
-    case BlockType.WATER:
     case BlockType.SKY:
       return 5;
+    case BlockType.WATER:
+      return 6;
     default:
       return 0;
   }
