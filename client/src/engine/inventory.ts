@@ -79,3 +79,45 @@ export function craftAtomic(slots: Stack[], grid: Stack[], recipes: Recipe[]) {
   if (added.remainder) return { ok: false, slots, grid, remainder: null };
   return { ok: true, slots: added.slots, grid: nextGrid, remainder: null };
 }
+
+export const HOTBAR_SIZE = 9;
+
+/**
+ * Shift-click quick move: sends a stack from the hotbar to the main inventory
+ * or back. Matching stacks are topped up first, then the first empty slot
+ * takes the rest; anything that doesn't fit stays where it was. Works on the
+ * parallel item/count arrays the store keeps, and returns new arrays.
+ */
+export function quickMoveSlot(
+  items: (BlockType | null)[],
+  counts: number[],
+  from: number,
+  maxStack = MAX_STACK,
+): { items: (BlockType | null)[]; counts: number[]; moved: number } {
+  const type = items[from];
+  const available = counts[from] ?? 0;
+  if (type === null || type === undefined || available <= 0) return { items, counts, moved: 0 };
+
+  const nextItems = [...items];
+  const nextCounts = [...counts];
+  const [start, end] = from < HOTBAR_SIZE ? [HOTBAR_SIZE, nextItems.length] : [0, HOTBAR_SIZE];
+  let remaining = available;
+
+  for (let i = start; i < end && remaining > 0; i += 1) {
+    if (nextItems[i] !== type || nextCounts[i] >= maxStack) continue;
+    const added = Math.min(maxStack - nextCounts[i], remaining);
+    nextCounts[i] += added;
+    remaining -= added;
+  }
+  for (let i = start; i < end && remaining > 0; i += 1) {
+    if (nextItems[i] !== null) continue;
+    const added = Math.min(maxStack, remaining);
+    nextItems[i] = type;
+    nextCounts[i] = added;
+    remaining -= added;
+  }
+
+  nextCounts[from] = remaining;
+  if (remaining === 0) nextItems[from] = null;
+  return { items: nextItems, counts: nextCounts, moved: available - remaining };
+}

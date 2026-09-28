@@ -7,6 +7,8 @@ import Player from "./engine/Player";
 import DayNightCycle from "./engine/DayNightCycle";
 import GameHUD from "./ui/GameHUD";
 import Inventory from "./ui/Inventory";
+import LegacyInventory from "./ui/LegacyInventory";
+import { isFeatureOn } from "./engine/features";
 import Crafting from "./ui/Crafting";
 import CraftingTable from "./ui/CraftingTable";
 import FurnaceUI from "./ui/FurnaceUI";
@@ -268,7 +270,7 @@ function Game() {
       <GameHUD />
 
       <div hidden={menu !== "inventory"}>
-        <Inventory onClose={resume} />
+        {isFeatureOn("inventorypanels") ? <Inventory onClose={resume} /> : <LegacyInventory onClose={resume} />}
       </div>
       <div hidden={menu !== "crafting"}>
         <Crafting onClose={resume} />

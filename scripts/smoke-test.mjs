@@ -60,6 +60,21 @@ try {
   await page.keyboard.up("KeyW");
   await page.keyboard.press("KeyE");
   await page.waitForTimeout(500);
+  await page.getByRole("heading", { name: "Equipment" }).waitFor({ timeout: 5_000 });
+  await page.getByRole("heading", { name: "Crafting · 2 × 2" }).waitFor({ timeout: 5_000 });
+
+  // Regression check: items can move directly from the hotbar into the
+  // inventory crafting grid and back without switching menus or losing count.
+  const hotbar = page.getByRole("region", { name: "Hotbar" });
+  const craftingGrid = page.locator('[aria-label="2 by 2 crafting grid"]');
+  // Gameplay above may have placed a plank, so match any count.
+  const planks = hotbar.getByRole("button", { name: /^Wood Planks × \d+$/ });
+  await planks.dragTo(craftingGrid.getByRole("button").nth(0));
+  const movedPlanks = craftingGrid.getByRole("button", { name: /^Wood Planks × \d+$/ });
+  await movedPlanks.waitFor({ timeout: 5_000 });
+  await movedPlanks.dragTo(hotbar.getByRole("button").nth(8));
+  await hotbar.getByRole("button", { name: /^Wood Planks × \d+$/ }).waitFor({ timeout: 5_000 });
+
   await page.keyboard.press("KeyE");
   await page.waitForTimeout(3000);
 
