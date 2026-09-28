@@ -5,8 +5,7 @@ import { gameInput } from "./input";
 import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
 import { BlockType, getBlockDrops, isBlockSolid } from "./blocks";
-import { useGame } from "../lib/stores/useGame";
-import { hasSave } from "./save";
+import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
   collidesAt,
@@ -88,7 +87,7 @@ const Player: React.FC = () => {
   }, [camera]);
 
   useEffect(() => {
-    if (hasSave()) return;
+    if (initialSave.data) return;
 
     let cancelled = false;
     const trySpawn = () => {
