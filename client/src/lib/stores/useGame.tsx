@@ -28,6 +28,11 @@ export interface DroppedItem {
   position: THREE.Vector3;
 }
 
+interface CursorItem {
+  type: BlockType;
+  count: number;
+}
+
 interface GameState {
   phase: GamePhase;
   // Player state
@@ -36,8 +41,13 @@ interface GameState {
   // Inventory
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
-  
-  
+  cursorItem: CursorItem | null;
+  setCursorItem: (item: CursorItem | null) => void;
+  craftingGrid: (BlockType | null)[];
+  craftingCounts: number[];
+  craftingTableGrid: (BlockType | null)[];
+  craftingTableCounts: number[];
+
   blockEntities: Record<string, BlockEntity>;
   setBlockEntity: (id: string, entity: BlockEntity | null) => void;
 
@@ -121,6 +131,11 @@ export const useGame = create<GameState>()(
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: savedGame?.inventory?.slots || initialInventory,
       inventoryCounts: savedGame?.inventory?.counts || initialCounts,
+      cursorItem: null,
+      craftingGrid: new Array<BlockType | null>(4).fill(null),
+      craftingCounts: new Array<number>(4).fill(0),
+      craftingTableGrid: new Array<BlockType | null>(9).fill(null),
+      craftingTableCounts: new Array<number>(9).fill(0),
       armor: savedGame?.armor || new Array(4).fill(null),
       droppedItems: savedGame?.droppedItems || [],
       blockEntities: savedGame?.blockEntities || {},
@@ -167,8 +182,11 @@ export const useGame = create<GameState>()(
     setSelectedSlot: (slot: number) => {
       set({ selectedSlot: Math.max(0, Math.min(8, slot)) });
     },
-    
-    
+
+    setCursorItem: (item) => {
+      set({ cursorItem: item ? { ...item } : null });
+    },
+
     setBlockEntity: (id, entity) => set((state) => {
       const newEntities = { ...state.blockEntities };
       if (entity === null) delete newEntities[id];
