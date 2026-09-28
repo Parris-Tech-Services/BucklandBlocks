@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
+import { MAX_AIR } from "../../engine/breathing";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -37,7 +38,11 @@ interface GameState {
   playerPosition: THREE.Vector3;
   playerRotation: { x: number; y: number };
   health: number;
+  air: number;
+  submerged: boolean;
   damagePlayer: (amount: number) => void;
+  setAir: (air: number) => void;
+  setSubmerged: (submerged: boolean) => void;
   respawn: () => void;
   // Inventory
   inventory: (BlockType | null)[];
@@ -183,11 +188,17 @@ export const useGame = create<GameState>()(
         : new THREE.Vector3(0, 70, 0),
       playerRotation: savedGame?.playerRotation || { x: 0, y: 0 },
       health: MAX_HEALTH,
+      air: MAX_AIR,
+      submerged: false,
       damagePlayer: (amount) =>
         set((state) => ({
           health: Math.max(0, state.health - Math.max(0, amount)),
         })),
-      respawn: () => set({ health: MAX_HEALTH }),
+      setAir: (air) =>
+        set({ air: Math.max(0, Math.min(MAX_AIR, air)) }),
+      setSubmerged: (submerged) => set({ submerged }),
+      respawn: () =>
+        set({ health: MAX_HEALTH, air: MAX_AIR, submerged: false }),
       
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: loadedInventory,
