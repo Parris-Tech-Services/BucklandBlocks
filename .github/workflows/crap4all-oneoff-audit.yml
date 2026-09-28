@@ -23,7 +23,9 @@ jobs:
           node --import tsx --test --experimental-test-coverage \
             --test-reporter=lcov \
             --test-reporter-destination=coverage/lcov.info \
-            client/src/engine/*.test.ts
+            client/src/engine/*.test.ts \
+            client/src/utils/*.test.ts \
+            client/src/ui/*.test.ts
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
