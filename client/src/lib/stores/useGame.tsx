@@ -186,9 +186,9 @@ export const useGame = create<GameState>()(
       craftingTableCounts: new Array(9).fill(0),
       cursorItem: null,
       setCursorItem: (item) => set({ cursorItem: item }),
-      armor: savedGame?.armor || new Array(4).fill(null),
-      droppedItems: savedGame?.droppedItems || [],
-      blockEntities: savedGame?.blockEntities || {},
+      armor: new Array(4).fill(null),
+      droppedItems: [],
+      blockEntities: {},
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state
