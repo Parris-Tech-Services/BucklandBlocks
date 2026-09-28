@@ -11,6 +11,11 @@ export type GamePhase = "ready" | "playing" | "ended";
 
 interface ChunkData {
   voxelData: Uint8Array;
+  /**
+   * True once the chunk holds player edits (or came from a save). Save World
+   * persists only dirty chunks, so this must never be cleared by rendering;
+   * remeshing is driven by voxelData/revision changes instead.
+   */
   dirty: boolean;
   revision: number;
 }
