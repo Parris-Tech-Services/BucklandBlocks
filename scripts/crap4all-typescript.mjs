@@ -173,13 +173,25 @@ scored.sort((a, b) =>
   a.start_line - b.start_line
 );
 
+const measured = scored.filter((row) => row.instrumented_lines > 0);
+const unmeasured = scored
+  .filter((row) => row.instrumented_lines === 0)
+  .sort((a, b) =>
+    b.complexity - a.complexity ||
+    a.file.localeCompare(b.file) ||
+    a.start_line - b.start_line
+  );
+
 const result = {
   audit_method: 'TypeScript compiler AST + LCOV CRAP',
   files_scanned: new Set(scored.map((row) => row.file)).size,
   functions_scored: scored.length,
-  headline_crap: scored[0]?.crap ?? null,
-  worst: scored[0] ?? null,
-  top: scored.slice(0, 25),
+  measured_functions: measured.length,
+  unmeasured_functions: unmeasured.length,
+  headline_crap: measured[0]?.crap ?? null,
+  worst: measured[0] ?? null,
+  top: measured.slice(0, 25),
+  unmeasured_top: unmeasured.slice(0, 25),
 };
 console.log('TS_CRAP4ALL_RESULT=' + JSON.stringify(result));
 
