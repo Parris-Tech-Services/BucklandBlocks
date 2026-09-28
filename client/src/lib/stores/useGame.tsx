@@ -4,6 +4,7 @@ import { BlockType, getBlockData } from "../../engine/blocks";
 import * as THREE from "three";
 import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
+import { takeFromHotbarSlot } from "../../engine/hotbar";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -74,6 +75,7 @@ interface GameState {
   setSelectedSlot: (slot: number) => void;
   addToInventory: (blockType: BlockType, count?: number) => number;
   removeFromInventory: (slot: number, count?: number) => void;
+  dropSelectedItem: (single?: boolean) => void;
   // World actions
   setBlock: (x: number, y: number, z: number, blockType: BlockType) => void;
   getBlock: (x: number, y: number, z: number) => BlockType;
@@ -324,6 +326,46 @@ export const useGame = create<GameState>()(
         }
         
         return { inventory: newInventory, inventoryCounts: newCounts };
+      });
+    },
+
+    dropSelectedItem: (single: boolean = false) => {
+      set((state) => {
+        const slot = state.selectedSlot;
+        const selectedType = state.inventory[slot];
+        const selectedCount = state.inventoryCounts[slot] ?? 0;
+        const drop = takeFromHotbarSlot(selectedType, selectedCount, single);
+        if (drop.dropCount <= 0 || selectedType === null) return {};
+
+        const inventory = [...state.inventory];
+        const inventoryCounts = [...state.inventoryCounts];
+        inventory[slot] = drop.type;
+        inventoryCounts[slot] = drop.remainingCount;
+
+        const yaw = state.playerRotation.y;
+        const forward = new THREE.Vector3(
+          -Math.sin(yaw),
+          0,
+          -Math.cos(yaw),
+        ).multiplyScalar(1.25);
+        const position = state.playerPosition
+          .clone()
+          .add(forward)
+          .add(new THREE.Vector3(0, -0.8, 0));
+
+        return {
+          inventory,
+          inventoryCounts,
+          droppedItems: [
+            ...state.droppedItems,
+            {
+              id: Math.random().toString(36).slice(2),
+              type: selectedType,
+              count: drop.dropCount,
+              position,
+            },
+          ],
+        };
       });
     },
     
