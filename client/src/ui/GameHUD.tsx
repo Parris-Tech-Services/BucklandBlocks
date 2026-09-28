@@ -87,7 +87,10 @@ const GameHUD: React.FC = () => {
         <div>E: Inventory</div>
         <div>C: Crafting</div>
         <div>ESC: Pause</div>
-        <div>1-9: Hotbar</div>
+        <div>1-9 / Wheel: Hotbar</div>
+        <div>Q: Drop stack</div>
+        <div>Shift+Q: Drop one</div>
+        <div>F1: Toggle HUD</div>
       </div>
 
 
