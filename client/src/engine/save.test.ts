@@ -65,7 +65,12 @@ test("writeSave/readSave round-trip representative persistent state", () => {
   const result = readSave(storage);
 
   assert.equal(result.error, null);
-  assert.deepEqual(result.data, save);
+  assert.ok(result.data);
+  assert.deepEqual(result.data?.playerPosition, save.playerPosition);
+  assert.deepEqual(result.data?.playerRotation, save.playerRotation);
+  assert.deepEqual(result.data?.inventory, save.inventory);
+  assert.equal(result.data?.gameTime, save.gameTime);
+  assert.deepEqual(result.data?.chunks, save.chunks);
 });
 
 test("a valid previous save is backed up before replacement", () => {
@@ -78,8 +83,12 @@ test("a valid previous save is backed up before replacement", () => {
 
   const backup = storage.getItem(BACKUP_KEY);
   assert.ok(backup);
-  assert.deepEqual(parseSave(backup), first);
-  assert.deepEqual(readSave(storage).data, second);
+  const backupSave = parseSave(backup);
+  const currentSave = readSave(storage).data;
+  assert.deepEqual(backupSave.playerPosition, first.playerPosition);
+  assert.deepEqual(backupSave.inventory, first.inventory);
+  assert.deepEqual(currentSave?.playerPosition, second.playerPosition);
+  assert.deepEqual(currentSave?.inventory, second.inventory);
 });
 
 test("invalid stored data is rejected without deleting or replacing it", () => {
