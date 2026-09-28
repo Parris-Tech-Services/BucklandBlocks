@@ -108,6 +108,22 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   return [inventory, counts];
 };
 
+const bumpChunk = (
+  chunks: Map<string, ChunkData>,
+  chunkX: number,
+  chunkZ: number,
+  markDirty = false,
+) => {
+  const key = `${chunkX},${chunkZ}`;
+  const chunk = chunks.get(key);
+  if (!chunk) return;
+  chunks.set(key, {
+    ...chunk,
+    dirty: chunk.dirty || markDirty,
+    revision: chunk.revision + 1,
+  });
+};
+
 const ensureStarterTools = (
   savedSlots: (BlockType | null)[] | undefined,
   savedCounts: number[] | undefined,
