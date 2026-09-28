@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, 'quality/**', 'fix/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,6 +25,8 @@ jobs:
             --test-reporter-destination=coverage/lcov.info \
             client/src/engine/*.test.ts \
             client/src/utils/*.test.ts
+      - name: Run TypeScript-aware CRAP4all audit
+        run: node scripts/crap4all-typescript.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -36,8 +38,8 @@ jobs:
           from pathlib import Path
           from fnmatch import fnmatch
           import json, xml.etree.ElementTree as ET, lizard, os
-          EXT={'.c','.cc','.cpp','.cxx','.h','.hpp','.cs','.erl','.f','.f90','.gd','.go','.java','.js','.jsx','.kt','.kts','.lua','.m','.mm','.pl','.pm','.php','.py','.r','.rb','.rs','.scala','.sol','.swift','.ts','.tsx','.vue','.zig'}
-          LANG={'.c':'C','.h':'C/C++','.cc':'C++','.cpp':'C++','.cxx':'C++','.hpp':'C++','.cs':'C#','.erl':'Erlang','.f':'Fortran','.f90':'Fortran','.gd':'GDScript','.go':'Go','.java':'Java','.js':'JavaScript','.jsx':'JavaScript/JSX','.kt':'Kotlin','.kts':'Kotlin','.lua':'Lua','.m':'Objective-C','.mm':'Objective-C++','.pl':'Perl','.pm':'Perl','.php':'PHP','.py':'Python','.r':'R','.rb':'Ruby','.rs':'Rust','.scala':'Scala','.sol':'Solidity','.swift':'Swift','.ts':'TypeScript','.tsx':'TypeScript/TSX','.vue':'Vue','.zig':'Zig'}
+          EXT={'.c','.cc','.cpp','.cxx','.h','.hpp','.cs','.erl','.f','.f90','.gd','.go','.java','.js','.jsx','.kt','.kts','.lua','.m','.mm','.pl','.pm','.php','.py','.r','.rb','.rs','.scala','.sol','.swift','.vue','.zig'}
+          LANG={'.c':'C','.h':'C/C++','.cc':'C++','.cpp':'C++','.cxx':'C++','.hpp':'C++','.cs':'C#','.erl':'Erlang','.f':'Fortran','.f90':'Fortran','.gd':'GDScript','.go':'Go','.java':'Java','.js':'JavaScript','.jsx':'JavaScript/JSX','.kt':'Kotlin','.kts':'Kotlin','.lua':'Lua','.m':'Objective-C','.mm':'Objective-C++','.pl':'Perl','.pm':'Perl','.php':'PHP','.py':'Python','.r':'R','.rb':'Ruby','.rs':'Rust','.scala':'Scala','.sol':'Solidity','.swift':'Swift','.vue':'Vue','.zig':'Zig'}
           EX=('.git/*','node_modules/*','vendor/*','dist/*','build/*','target/*','.venv/*','venv/*','coverage/*','.next/*','.cache/*','__pycache__/*')
           def norm(s): return s.replace('\\','/').removeprefix('./')
           def add(rep,f,n,h): rep.setdefault(norm(f),{})[n]=max(rep.setdefault(norm(f),{}).get(n,0),max(0,h))
