@@ -126,7 +126,7 @@ const bumpChunk = (
   });
 };
 
-const ensureStarterTools = (
+export const ensureStarterTools = (
   savedSlots: (BlockType | null)[] | undefined,
   savedCounts: number[] | undefined,
   fallbackSlots: (BlockType | null)[],

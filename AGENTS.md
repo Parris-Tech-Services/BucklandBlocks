@@ -44,3 +44,39 @@ Never claim "working" from source inspection alone. Report separately:
 - exact manual behaviour observed
 
 A Vercel build being READY proves build/deploy success, not gameplay correctness.
+
+## Also never
+
+- Never deploy by hand with the Vercel CLI (`vercel deploy --prod`). Production
+  comes only from `main` via Vercel's Git integration.
+- Never make a gate pass by weakening it: no `@ts-ignore`, no `as any` to silence
+  a real error, no skipped tests, no loosened lint or tsconfig rules.
+
+## Before pushing
+
+Run `npm run verify` — the same checks CI runs: type check, lint (React rules
+of hooks), all tests, production build, and a headless-browser smoke test that
+loads the game, presses Resume, plays briefly, and fails on any page error,
+console error or missing asset.
+
+## Ship new features behind a gate
+
+New or risky features start **off**, behind a flag in
+`client/src/engine/features.ts`, so an unfinished feature can't break the
+working game:
+
+```ts
+import { isFeatureOn } from "./features";
+if (isFeatureOn("newinventory")) { /* new behaviour */ } else { /* existing behaviour */ }
+```
+
+Josh turns one on with `?features=newinventory` on the preview or live URL
+(add `&features-save=1` to keep it on; `?features=-name` turns one off,
+`?features=none` turns all off). Once approved, flip its default in
+`FEATURE_DEFAULTS` in a follow-up PR, and later remove the old path.
+
+## If production breaks
+
+Roll back first, fix second: Vercel dashboard → buckland-blocks → Deployments →
+last good deployment → **Instant Rollback** (or `vercel rollback`). Then fix on
+a `hotfix/*` branch through the normal PR path.
