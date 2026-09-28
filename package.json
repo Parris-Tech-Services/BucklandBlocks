@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "test": "tsx --test client/src/engine/*.test.ts",
+    "verify:release": "node scripts/verify-release.mjs",
     "db:push": "drizzle-kit push",
     "build:client": "vite build",
     "vercel-build": "npm run build:client"
