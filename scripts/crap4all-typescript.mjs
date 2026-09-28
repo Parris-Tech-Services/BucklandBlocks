@@ -1,4 +1,5 @@
-// CRAP requires observed coverage: uninstrumented functions are reported separately, not assigned invented 0% coverage.\nimport fs from 'node:fs';
+// CRAP requires observed coverage: uninstrumented functions are reported separately, not assigned invented 0% coverage.
+import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 
