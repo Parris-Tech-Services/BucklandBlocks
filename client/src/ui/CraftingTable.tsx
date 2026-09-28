@@ -20,8 +20,80 @@ const recipes = recipesData as unknown as Recipe[];
 const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
   const { 
     craftingTableGrid, craftingTableCounts, 
-    cursorItem, setCursorItem, addToInventory
+    cursorItem, setCursorItem, addToInventory,
+    inventory, inventoryCounts,
   } = useGame();
+
+  type DragSource = { kind: 'inventory' | 'table'; index: number };
+
+  const handleDragStart = (e: React.DragEvent, source: DragSource) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/x-buckland-item', JSON.stringify(source));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, target: DragSource) => {
+    e.preventDefault();
+    e.stopPropagation();
+    let source: DragSource;
+    try {
+      source = JSON.parse(e.dataTransfer.getData('application/x-buckland-item')) as DragSource;
+    } catch {
+      return;
+    }
+    if (source.kind === target.kind && source.index === target.index) return;
+
+    const state = useGame.getState();
+    const nextInventory = [...state.inventory];
+    const nextInventoryCounts = [...state.inventoryCounts];
+    const nextGrid = [...state.craftingTableGrid];
+    const nextGridCounts = [...state.craftingTableCounts];
+    const sourceSlots = source.kind === 'inventory' ? nextInventory : nextGrid;
+    const sourceCounts = source.kind === 'inventory' ? nextInventoryCounts : nextGridCounts;
+    const targetSlots = target.kind === 'inventory' ? nextInventory : nextGrid;
+    const targetCounts = target.kind === 'inventory' ? nextInventoryCounts : nextGridCounts;
+    const sourceType = sourceSlots[source.index];
+    if (sourceType === null || sourceType === undefined || sourceCounts[source.index] <= 0) return;
+
+    const targetType = targetSlots[target.index];
+    const sourceCount = sourceCounts[source.index];
+    const targetCount = targetCounts[target.index];
+    if (targetType === null || targetCount <= 0) {
+      targetSlots[target.index] = sourceType;
+      targetCounts[target.index] = sourceCount;
+      sourceSlots[source.index] = null;
+      sourceCounts[source.index] = 0;
+    } else if (targetType === sourceType) {
+      const maxStack = getBlockData(sourceType)?.maxStack ?? 64;
+      const moved = Math.min(sourceCount, Math.max(0, maxStack - targetCount));
+      targetCounts[target.index] += moved;
+      sourceCounts[source.index] -= moved;
+      if (sourceCounts[source.index] <= 0) sourceSlots[source.index] = null;
+    } else {
+      targetSlots[target.index] = sourceType;
+      targetCounts[target.index] = sourceCount;
+      sourceSlots[source.index] = targetType;
+      sourceCounts[source.index] = targetCount;
+    }
+
+    useGame.setState({
+      inventory: nextInventory,
+      inventoryCounts: nextInventoryCounts,
+      craftingTableGrid: nextGrid,
+      craftingTableCounts: nextGridCounts,
+    });
+  };
+
+  const renderItem = (type: BlockType | null, count: number, alt: string) => type === null ? null : (
+    <>
+      <img src={getBlockData(type)?.texture} alt={alt} className="h-full w-full object-cover p-1 pixelated" />
+      {count > 1 && <span className="absolute bottom-0 right-1 text-xs font-bold text-white" style={{ textShadow: '1px 1px 0 #000' }}>{count}</span>}
+    </>
+  );
   
   const handleDropOutside = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -188,19 +260,14 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
                 <div
                   key={i}
                   onMouseDown={(e) => handleGridClick(e, i)}
+                  onDragStart={(e) => handleDragStart(e, { kind: 'table', index: i })}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, { kind: 'table', index: i })}
+                  draggable={blockType !== null}
                   title={blockType !== null ? getBlockData(blockType)?.name : undefined}
                   className="w-12 h-12 bg-gray-700 border-2 border-gray-600 hover:border-gray-400 hover:bg-gray-600 transition-colors rounded cursor-pointer relative"
                 >
-                  {blockType !== null && (
-                    <>
-                      <img src={getBlockData(blockType)?.texture} alt="item" className="w-full h-full object-cover pixelated p-1" />
-                      {craftingTableCounts[i] > 1 && (
-                        <span className="absolute bottom-0 right-1 text-white text-xs font-bold font-mono" style={{ textShadow: '1px 1px 0 #000' }}>
-                          {craftingTableCounts[i]}
-                        </span>
-                      )}
-                    </>
-                  )}
+                  {renderItem(blockType, craftingTableCounts[i], 'crafting ingredient')}
                 </div>
               );
             })}
@@ -223,6 +290,47 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
                 )}
               </>
             )}
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-gray-600 pt-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">Inventory · drag items into the crafting grid</p>
+          <div className="mb-3 grid grid-cols-9 gap-1">
+            {Array.from({ length: 27 }, (_, i) => {
+              const index = i + 9;
+              const blockType = inventory[index];
+              return (
+                <div
+                  key={index}
+                  draggable={blockType !== null}
+                  onDragStart={(e) => handleDragStart(e, { kind: 'inventory', index })}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, { kind: 'inventory', index })}
+                  title={blockType !== null ? getBlockData(blockType)?.name : 'Empty'}
+                  className="relative h-10 w-10 cursor-grab border-2 border-gray-500 bg-gray-700 hover:bg-gray-600"
+                >
+                  {renderItem(blockType, inventoryCounts[index], 'inventory item')}
+                </div>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-9 gap-1">
+            {Array.from({ length: 9 }, (_, index) => {
+              const blockType = inventory[index];
+              return (
+                <div
+                  key={index}
+                  draggable={blockType !== null}
+                  onDragStart={(e) => handleDragStart(e, { kind: 'inventory', index })}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, { kind: 'inventory', index })}
+                  title={blockType !== null ? getBlockData(blockType)?.name : 'Empty'}
+                  className="relative h-12 w-12 cursor-grab border-2 border-gray-500 bg-gray-700 hover:bg-gray-600"
+                >
+                  {renderItem(blockType, inventoryCounts[index], 'hotbar item')}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
