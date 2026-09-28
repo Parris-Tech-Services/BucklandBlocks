@@ -69,7 +69,10 @@ function Game() {
       gameInput.key(event.code, false, false);
     };
     const mouseDown = (event: MouseEvent) => {
-      gameInput.mouse(event.button, true, isGameplayActive());
+      const active = isGameplayActive();
+      if (gameInput.mouse(event.button, true, active) && active) {
+        event.preventDefault();
+      }
     };
     const mouseUp = (event: MouseEvent) => {
       gameInput.mouse(event.button, false, false);
