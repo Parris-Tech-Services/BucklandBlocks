@@ -42,10 +42,10 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
   const chunkData = chunks.get(chunkKey);
   const voxelData = chunkData?.voxelData;
 
-  if (!voxelData) return null;
+  const mesh = useMemo(() => {
+    if (!voxelData) return null;
 
-  const { geometry, materials } = useMemo(() => {
-  const geo = createBlockMesh(voxelData, size);
+    const geo = createBlockMesh(voxelData, size);
     // normals for proper lighting
     geo.computeVertexNormals();
 
@@ -108,12 +108,17 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
     chunkData,
   ]);
 
+  // Keep the hook above unconditional. Chunks are created before their voxel
+  // data arrives, so returning before useMemo would change hook order and
+  // trigger React error #310 when the data loaded.
+  if (!mesh) return null;
+
   return (
     <mesh
       position={position}
-      geometry={geometry}
+      geometry={mesh.geometry}
       // IMPORTANT: pass the whole array so geometry.groups use the right material index
-      material={materials}
+      material={mesh.materials}
       // turn shadows OFF for perf for now
       castShadow={false}
       receiveShadow={false}
