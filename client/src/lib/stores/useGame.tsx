@@ -37,6 +37,7 @@ interface GameState {
   playerRotation: { x: number; y: number };
   health: number;
   damagePlayer: (amount: number) => void;
+  respawn: () => void;
   // Inventory
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
@@ -184,6 +185,7 @@ export const useGame = create<GameState>()(
         set((state) => ({
           health: Math.max(0, state.health - Math.max(0, amount)),
         })),
+      respawn: () => set({ health: MAX_HEALTH }),
       
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: loadedInventory,
