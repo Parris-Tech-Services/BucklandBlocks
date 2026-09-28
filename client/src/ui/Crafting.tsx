@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
+import ItemIcon from './ItemIcon';
 import recipesData from '../data/recipes.json';
 
 interface CraftingProps {
@@ -174,16 +175,7 @@ const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
         onClick={(e) => handleCraftingSlotClick(e, slotIndex)}
         onContextMenu={(e) => handleCraftingSlotClick(e, slotIndex)}
       >
-        {blockType !== null && blockType !== BlockType.AIR && (
-          <>
-            <div className="text-white text-[8px] font-bold text-center">
-              {getBlockData(blockType)?.name.slice(0, 8) || 'Unknown'}
-            </div>
-            {count > 0 && (
-              <div className="text-white text-[10px] font-mono mt-1">{count}</div>
-            )}
-          </>
-        )}
+        {blockType !== null && <ItemIcon type={blockType} count={count} />}
       </div>
     );
   };
@@ -195,10 +187,7 @@ const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
         className="w-12 h-12 border-2 border-yellow-400 bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600"
         onClick={handleCraftButtonClick}
       >
-        <div className="text-white text-[8px] font-bold text-center">
-          {getBlockData(craftResult.result.type)?.name.slice(0, 8)}
-        </div>
-        <div className="text-white text-[10px] font-mono mt-1">{craftResult.result.count}</div>
+        <ItemIcon type={craftResult.result.type} count={craftResult.result.count} />
       </div>
     );
   };

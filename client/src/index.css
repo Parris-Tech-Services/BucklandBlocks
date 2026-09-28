@@ -28,3 +28,7 @@ canvas {
   height: 100% !important;
   touch-action: none;
 }
+/* Keep pixel-art item icons crisp when scaled up in slots. */
+.pixelated {
+  image-rendering: pixelated;
+}

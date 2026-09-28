@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ArrowRight, X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
+import ItemIcon from './ItemIcon';
 import { quickMoveSlot } from '../engine/inventory';
 import recipesData from '../data/recipes.json';
 
@@ -243,10 +244,7 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => handleDrop(event, grid, index)}
       >
-        {type !== null && type !== BlockType.AIR && <>
-          <span className="px-0.5 text-center text-[8px] font-bold leading-tight text-white">{getBlockData(type)?.name.slice(0, 8) ?? 'Unknown'}</span>
-          {count > 1 && <span className="absolute bottom-0 right-1 font-mono text-[10px] text-white">{count}</span>}
-        </>}
+        {type !== null && <ItemIcon type={type} count={count} />}
       </button>
     );
   };
@@ -288,8 +286,7 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
               </div>
               <ArrowRight aria-hidden="true" className="text-gray-400" />
               <button type="button" onClick={takeCraftResult} disabled={!craftResult} aria-label={craftResult ? `Craft ${getBlockData(craftResult.result.type)?.name}` : 'Crafting result'} title={craftResult ? getBlockData(craftResult.result.type)?.name : 'No matching recipe'} className="relative h-12 w-12 border-2 border-yellow-500 bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40">
-                {craftResult && <span className="text-[8px] font-bold">{getBlockData(craftResult.result.type)?.name.slice(0, 8)}</span>}
-                {craftResult && craftResult.result.count > 1 && <span className="absolute bottom-0 right-1 text-[10px]">{craftResult.result.count}</span>}
+                {craftResult && <ItemIcon type={craftResult.result.type} count={craftResult.result.count} />}
               </button>
             </div>
             <p className="mt-2 text-center text-[10px] text-gray-400">Click a slot or drag items here; take the result to craft.</p>
