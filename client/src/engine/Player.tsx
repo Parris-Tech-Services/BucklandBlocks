@@ -105,6 +105,309 @@ const BlockDamageOverlay: React.FC<{ targetBlock: any, miningProgressRef: React.
   );
 };
 
+
+type GameKeys = ReturnType<typeof gameInput.read>;
+type GameState = ReturnType<typeof useGame.getState>;
+type MiningState = ReturnType<typeof idleMining>;
+
+function getMovementDirection(camera: THREE.Camera, keys: GameKeys): THREE.Vector3 {
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  forward.y = 0;
+  right.y = 0;
+  forward.normalize();
+  right.normalize();
+
+  return new THREE.Vector3()
+    .addScaledVector(forward, Number(keys.forward) - Number(keys.backward))
+    .addScaledVector(right, Number(keys.rightward) - Number(keys.leftward))
+    .normalize();
+}
+
+function isPlayerInWater(camera: THREE.Camera, getBlock: GameState["getBlock"]): boolean {
+  const x = Math.floor(camera.position.x);
+  const z = Math.floor(camera.position.z);
+  return [
+    Math.floor(camera.position.y),
+    Math.floor(camera.position.y - 0.9),
+    Math.floor(camera.position.y - PLAYER_HEIGHT),
+  ].some((y) => getBlock(x, y, z) === BlockType.WATER);
+}
+
+function getMoveSpeed(inWater: boolean, sneaking: boolean): number {
+  if (inWater) return PLAYER_SPEED * (sneaking ? 0.35 : 0.65);
+  return PLAYER_SPEED * (sneaking ? 0.5 : 1);
+}
+
+function getMovementControl(inWater: boolean, onGround: boolean): number {
+  if (inWater) return 0.55;
+  return onGround ? 1 : AIR_CONTROL;
+}
+
+function applyHorizontalMovement(
+  velocity: THREE.Vector3,
+  direction: THREE.Vector3,
+  speed: number,
+  control: number,
+): void {
+  const targetVelocity = direction.multiplyScalar(speed);
+  velocity.x = THREE.MathUtils.lerp(velocity.x, targetVelocity.x, control);
+  velocity.z = THREE.MathUtils.lerp(velocity.z, targetVelocity.z, control);
+}
+
+function applyJumpOrSwim(
+  velocity: THREE.Vector3,
+  keys: GameKeys,
+  inWater: boolean,
+  onGround: boolean,
+): boolean {
+  if (inWater && keys.jump) {
+    velocity.y = Math.max(velocity.y, 4.5);
+    return onGround;
+  }
+  if (inWater && keys.sneak) {
+    velocity.y = Math.min(velocity.y, -3.5);
+    return onGround;
+  }
+  if (keys.jump && onGround) {
+    velocity.y = JUMP_FORCE;
+    return false;
+  }
+  return onGround;
+}
+
+function applyGravity(velocity: THREE.Vector3, inWater: boolean, delta: number): void {
+  velocity.y += (inWater ? -3 : GRAVITY) * delta;
+  if (inWater) velocity.y = THREE.MathUtils.clamp(velocity.y, -4, 4.5);
+}
+
+function updateFallStart(
+  fallStartY: number | null,
+  positionY: number,
+  verticalVelocity: number,
+  inWater: boolean,
+): number | null {
+  if (inWater) return null;
+  if (fallStartY === null && verticalVelocity < 0) return positionY;
+  return fallStartY;
+}
+
+function movePlayer(
+  camera: THREE.Camera,
+  velocity: THREE.Vector3,
+  delta: number,
+  getBlock: GameState["getBlock"],
+): { blockedY: boolean; wasFalling: boolean } {
+  const moveDelta = velocity.clone().multiplyScalar(delta);
+  moveAxisWithCollision(camera.position, velocity, "x", moveDelta.x, PLAYER_HEIGHT, getBlock);
+  moveAxisWithCollision(camera.position, velocity, "z", moveDelta.z, PLAYER_HEIGHT, getBlock);
+
+  const wasFalling = velocity.y <= 0;
+  const blockedY = moveAxisWithCollision(
+    camera.position,
+    velocity,
+    "y",
+    moveDelta.y,
+    PLAYER_HEIGHT,
+    getBlock,
+  );
+  return { blockedY, wasFalling };
+}
+
+function resolveFallDamage(
+  blockedY: boolean,
+  wasFalling: boolean,
+  fallStartY: number | null,
+  currentY: number,
+  inWater: boolean,
+  damagePlayer: GameState["damagePlayer"],
+): number | null {
+  if (!blockedY || !wasFalling) return fallStartY;
+  const fallDistance = fallStartY === null ? 0 : fallStartY - currentY;
+  const damage = getFallDamage(fallDistance, inWater);
+  if (damage > 0) damagePlayer(damage);
+  return null;
+}
+
+function sameRaycast(left: RaycastHit, right: RaycastHit): boolean {
+  return (
+    left.position.equals(right.position) &&
+    left.normal.equals(right.normal) &&
+    left.blockType === right.blockType
+  );
+}
+
+function publishTarget(
+  raycast: RaycastHit | null,
+  setTargetBlock: React.Dispatch<React.SetStateAction<RaycastHit | null>>,
+): void {
+  setTargetBlock((previous) => {
+    if (!raycast || raycast.distance <= 0.25) return null;
+    if (previous && sameRaycast(previous, raycast)) return previous;
+    return raycast;
+  });
+}
+
+function getMiningTarget(raycast: RaycastHit | null) {
+  if (!raycast || raycast.distance <= 0.25) return null;
+  return {
+    key: `${raycast.position.x},${raycast.position.y},${raycast.position.z}`,
+    blockType: raycast.blockType,
+  };
+}
+
+function shouldPlayMiningHit(
+  miningTarget: ReturnType<typeof getMiningTarget>,
+  mineActive: boolean,
+): boolean {
+  return Boolean(
+    miningTarget &&
+    miningTarget.blockType !== BlockType.WATER &&
+    mineActive,
+  );
+}
+
+function breakMinedBlock(
+  raycast: RaycastHit,
+  setBlock: GameState["setBlock"],
+  addToInventory: GameState["addToInventory"],
+  addDroppedItem: GameState["addDroppedItem"],
+): void {
+  const { x, y, z } = raycast.position;
+  const blockType = raycast.blockType;
+  playBreak(blockType);
+  setBlock(Math.floor(x), Math.floor(y), Math.floor(z), BlockType.AIR);
+
+  getBlockDrops(blockType).forEach((drop) => {
+    const remaining = addToInventory(drop.id, drop.count);
+    if (remaining <= 0) return;
+    addDroppedItem(
+      drop.id,
+      remaining,
+      new THREE.Vector3(
+        Math.floor(x) + 0.5,
+        Math.floor(y) + 0.5,
+        Math.floor(z) + 0.5,
+      ),
+    );
+  });
+}
+
+function selectedBlockCanBePlaced(
+  selectedBlockType: BlockType | null,
+  selectedCount: number,
+): selectedBlockType is BlockType {
+  return (
+    selectedBlockType !== null &&
+    selectedCount > 0 &&
+    getBlockData(selectedBlockType).placeable !== false
+  );
+}
+
+function getPlayerBox(position: THREE.Vector3): THREE.Box3 {
+  return new THREE.Box3(
+    new THREE.Vector3(
+      position.x - PLAYER_HALF_WIDTH,
+      position.y - PLAYER_HEIGHT,
+      position.z - PLAYER_HALF_WIDTH,
+    ),
+    new THREE.Vector3(
+      position.x + PLAYER_HALF_WIDTH,
+      position.y + HEAD_ROOM,
+      position.z + PLAYER_HALF_WIDTH,
+    ),
+  );
+}
+
+function getBlockBox(position: THREE.Vector3): THREE.Box3 {
+  const x = Math.floor(position.x);
+  const y = Math.floor(position.y);
+  const z = Math.floor(position.z);
+  return new THREE.Box3(
+    new THREE.Vector3(x, y, z),
+    new THREE.Vector3(x + 1, y + 1, z + 1),
+  );
+}
+
+function placeSelectedBlock(
+  camera: THREE.Camera,
+  raycast: RaycastHit,
+  selectedBlockType: BlockType,
+  selectedSlot: number,
+  getBlock: GameState["getBlock"],
+  setBlock: GameState["setBlock"],
+  removeFromInventory: GameState["removeFromInventory"],
+): boolean {
+  const placePos = raycast.position.clone().add(raycast.normal);
+  const x = Math.floor(placePos.x);
+  const y = Math.floor(placePos.y);
+  const z = Math.floor(placePos.z);
+  const supported = hasSolidSupport(x, y, z, getBlock);
+  if (!supported || getPlayerBox(camera.position).intersectsBox(getBlockBox(placePos))) return false;
+
+  setBlock(x, y, z, selectedBlockType);
+  playPlace(selectedBlockType);
+  removeFromInventory(selectedSlot, 1);
+  return true;
+}
+
+function runMining(
+  miningState: MiningState,
+  raycast: RaycastHit | null,
+  mineActive: boolean,
+  selectedBlockType: BlockType | null,
+  delta: number,
+  hitTimer: ReturnType<typeof createHitTimer>,
+  setBlock: GameState["setBlock"],
+  addToInventory: GameState["addToInventory"],
+  addDroppedItem: GameState["addDroppedItem"],
+): boolean {
+  const miningTarget = getMiningTarget(raycast);
+  const broke = stepMining(
+    miningState,
+    miningTarget,
+    mineActive,
+    heldTool(selectedBlockType),
+    delta,
+  );
+
+  if (hitTimer(shouldPlayMiningHit(miningTarget, mineActive), delta) && raycast) {
+    playHit(raycast.blockType);
+  }
+  if (!broke || !raycast) return false;
+
+  breakMinedBlock(raycast, setBlock, addToInventory, addDroppedItem);
+  return true;
+}
+
+function tryPlaceBlock(
+  placeActive: boolean,
+  raycast: RaycastHit | null,
+  now: number,
+  lastAction: number,
+  camera: THREE.Camera,
+  inventory: GameState["inventory"],
+  inventoryCounts: GameState["inventoryCounts"],
+  selectedSlot: number,
+  getBlock: GameState["getBlock"],
+  setBlock: GameState["setBlock"],
+  removeFromInventory: GameState["removeFromInventory"],
+): boolean {
+  if (!placeActive || !raycast || now - lastAction <= 200) return false;
+  const selectedBlockType = inventory[selectedSlot];
+  if (!selectedBlockCanBePlaced(selectedBlockType, inventoryCounts[selectedSlot])) return false;
+
+  return placeSelectedBlock(
+    camera,
+    raycast,
+    selectedBlockType,
+    selectedSlot,
+    getBlock,
+    setBlock,
+    removeFromInventory,
+  );
+}
+
 const Player: React.FC = () => {
   const { camera } = useThree();
 
@@ -277,127 +580,43 @@ const Player: React.FC = () => {
     }
 
     const keys = gameInput.read();
-    const minePress = gameInput.consumeMousePress("mine");
-    const placePress = gameInput.consumeMousePress("place");
-    const mineActive = keys.mine || minePress;
-    const placeActive = keys.place || placePress;
+    const mineActive = keys.mine || gameInput.consumeMousePress("mine");
+    const placeActive = keys.place || gameInput.consumeMousePress("place");
     const velocity = velocityRef.current;
+    const inWater = isPlayerInWater(camera, getBlock);
+    const direction = getMovementDirection(camera, keys);
 
-    const direction = new THREE.Vector3();
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
-      camera.quaternion,
-    );
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(
-      camera.quaternion,
-    );
-
-    forward.y = 0;
-    forward.normalize();
-    right.y = 0;
-    right.normalize();
-
-    if (keys.forward) direction.add(forward);
-    if (keys.backward) direction.sub(forward);
-    if (keys.rightward) direction.add(right);
-    if (keys.leftward) direction.sub(right);
-
-    direction.normalize();
-
-    const inWater = [
-      Math.floor(camera.position.y),
-      Math.floor(camera.position.y - 0.9),
-      Math.floor(camera.position.y - PLAYER_HEIGHT),
-    ].some(
-      (y) =>
-        getBlock(
-          Math.floor(camera.position.x),
-          y,
-          Math.floor(camera.position.z),
-        ) === BlockType.WATER,
-    );
-
-    const speed = inWater
-      ? PLAYER_SPEED * (keys.sneak ? 0.35 : 0.65)
-      : PLAYER_SPEED * (keys.sneak ? 0.5 : 1);
-    const control = inWater
-      ? 0.55
-      : onGroundRef.current
-        ? 1
-        : AIR_CONTROL;
-
-    const targetVelocity = direction.multiplyScalar(speed);
-    velocity.x = THREE.MathUtils.lerp(
-      velocity.x,
-      targetVelocity.x,
-      control,
-    );
-    velocity.z = THREE.MathUtils.lerp(
-      velocity.z,
-      targetVelocity.z,
-      control,
-    );
-
-    if (inWater && keys.jump) {
-      velocity.y = Math.max(velocity.y, 4.5);
-    } else if (inWater && keys.sneak) {
-      velocity.y = Math.min(velocity.y, -3.5);
-    } else if (keys.jump && onGroundRef.current) {
-      velocity.y = JUMP_FORCE;
-      onGroundRef.current = false;
-    }
-
-    velocity.y += (inWater ? -3 : GRAVITY) * delta;
-    if (inWater) {
-      velocity.y = THREE.MathUtils.clamp(velocity.y, -4, 4.5);
-    }
-
-    if (!inWater && fallStartYRef.current === null && velocity.y < 0) {
-      fallStartYRef.current = camera.position.y;
-    }
-    if (inWater) {
-      fallStartYRef.current = null;
-    }
-
-    const moveDelta = velocity.clone().multiplyScalar(delta);
-    moveAxisWithCollision(
-      camera.position,
+    applyHorizontalMovement(
       velocity,
-      "x",
-      moveDelta.x,
-      PLAYER_HEIGHT,
-      getBlock,
-    );
-    moveAxisWithCollision(
-      camera.position,
-      velocity,
-      "z",
-      moveDelta.z,
-      PLAYER_HEIGHT,
-      getBlock,
+      direction,
+      getMoveSpeed(inWater, keys.sneak),
+      getMovementControl(inWater, onGroundRef.current),
     );
 
-    const wasFalling = velocity.y <= 0;
-    const blockedY = moveAxisWithCollision(
-      camera.position,
+    onGroundRef.current = applyJumpOrSwim(
       velocity,
-      "y",
-      moveDelta.y,
-      PLAYER_HEIGHT,
-      getBlock,
+      keys,
+      inWater,
+      onGroundRef.current,
     );
+    applyGravity(velocity, inWater, delta);
+    fallStartYRef.current = updateFallStart(
+      fallStartYRef.current,
+      camera.position.y,
+      velocity.y,
+      inWater,
+    );
+
+    const { blockedY, wasFalling } = movePlayer(camera, velocity, delta, getBlock);
     onGroundRef.current = blockedY && wasFalling;
-
-    if (blockedY && wasFalling) {
-      const fallDistance =
-        fallStartYRef.current === null
-          ? 0
-          : fallStartYRef.current - camera.position.y;
-      const damage = getFallDamage(fallDistance, inWater);
-      if (damage > 0) {
-        damagePlayer(damage);
-      }
-      fallStartYRef.current = null;
-    }
+    fallStartYRef.current = resolveFallDamage(
+      blockedY,
+      wasFalling,
+      fallStartYRef.current,
+      camera.position.y,
+      inWater,
+      damagePlayer,
+    );
 
     const raycast = performRaycast(
       camera.position,
@@ -405,135 +624,41 @@ const Player: React.FC = () => {
       5,
       getBlock,
     );
-
-    setTargetBlock((previous) => {
-      if (!raycast || raycast.distance <= 0.25) return null;
-      if (
-        previous &&
-        previous.position.equals(raycast.position) &&
-        previous.normal.equals(raycast.normal) &&
-        previous.blockType === raycast.blockType
-      ) {
-        return previous;
-      }
-      return raycast;
-    });
+    publishTarget(raycast, setTargetBlock);
 
     const now = Date.now();
-
-    const miningTarget = raycast && raycast.distance > 0.25
-      ? { key: `${raycast.position.x},${raycast.position.y},${raycast.position.z}`, blockType: raycast.blockType }
-      : null;
-    const broke = stepMining(
+    const broke = runMining(
       miningRef.current,
-      miningTarget,
+      raycast,
       mineActive,
-      heldTool(inventory[selectedSlot]),
+      inventory[selectedSlot],
       delta,
+      hitTimerRef.current,
+      setBlock,
+      addToInventory,
+      addDroppedItem,
     );
     miningProgressRef.current = miningRef.current.progress;
-
-    const canSoundMine =
-      !!miningTarget && miningTarget.blockType !== BlockType.WATER && mineActive;
-    if (hitTimerRef.current(canSoundMine, delta) && raycast) {
-      playHit(raycast.blockType);
-    }
-
-    if (broke && raycast) {
-      lastActionRef.current = now;
-
-      const { x, y, z } = raycast.position;
-      const blockType = raycast.blockType;
-
-      playBreak(blockType);
-      setBlock(
-        Math.floor(x),
-        Math.floor(y),
-        Math.floor(z),
-        BlockType.AIR,
-      );
-
-      const drops = getBlockDrops(blockType);
-      drops.forEach((drop) => {
-        const remaining = addToInventory(drop.id, drop.count);
-        if (remaining > 0) {
-          addDroppedItem(
-            drop.id,
-            remaining,
-            new THREE.Vector3(
-              Math.floor(x) + 0.5,
-              Math.floor(y) + 0.5,
-              Math.floor(z) + 0.5,
-            ),
-          );
-        }
-      });
-    }
+    if (broke) lastActionRef.current = now;
 
     if (
-      placeActive &&
-      raycast &&
-      now - lastActionRef.current > 200
+      tryPlaceBlock(
+        placeActive,
+        raycast,
+        now,
+        lastActionRef.current,
+        camera,
+        inventory,
+        inventoryCounts,
+        selectedSlot,
+        getBlock,
+        setBlock,
+        removeFromInventory,
+      )
     ) {
-      const selectedBlockType = inventory[selectedSlot];
-
-      if (
-        selectedBlockType !== null &&
-        inventoryCounts[selectedSlot] > 0 &&
-        getBlockData(selectedBlockType).placeable !== false
-      ) {
-        lastActionRef.current = now;
-
-        const placePos = raycast.position.clone().add(raycast.normal);
-        const { x, y, z } = placePos;
-
-        const playerBox = new THREE.Box3(
-          new THREE.Vector3(
-            camera.position.x - PLAYER_HALF_WIDTH,
-            camera.position.y - PLAYER_HEIGHT,
-            camera.position.z - PLAYER_HALF_WIDTH,
-          ),
-          new THREE.Vector3(
-            camera.position.x + PLAYER_HALF_WIDTH,
-            camera.position.y + HEAD_ROOM,
-            camera.position.z + PLAYER_HALF_WIDTH,
-          ),
-        );
-
-        const blockBox = new THREE.Box3(
-          new THREE.Vector3(
-            Math.floor(x),
-            Math.floor(y),
-            Math.floor(z),
-          ),
-          new THREE.Vector3(
-            Math.floor(x) + 1,
-            Math.floor(y) + 1,
-            Math.floor(z) + 1,
-          ),
-        );
-
-        const canPlace = hasSolidSupport(
-          Math.floor(x),
-          Math.floor(y),
-          Math.floor(z),
-          getBlock,
-        );
-
-        if (canPlace && !playerBox.intersectsBox(blockBox)) {
-          setBlock(
-            Math.floor(x),
-            Math.floor(y),
-            Math.floor(z),
-            selectedBlockType,
-          );
-          playPlace(selectedBlockType);
-
-          removeFromInventory(selectedSlot, 1);
-        }
-      }
+      lastActionRef.current = now;
     }
-  });
+  });;
 
   return (
     <>
