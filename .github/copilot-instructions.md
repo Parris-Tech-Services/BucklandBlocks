@@ -54,3 +54,5 @@
 ---
 
 For more, see `README.md` or ask for architectural diagrams or code walkthroughs.
+
+All agents: follow the release rules in AGENTS.md (branch + PR only, never push to main or deploy by hand).

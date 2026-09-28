@@ -25,6 +25,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      # React rules of hooks: catches hook-order crashes (React error #310).
+      - run: npm run lint
       - run: npm test
       - run: npm run build
       - run: npm run verify:release
+      # Load the built game in a real browser, press Resume, play briefly, and
+      # fail on any page error, console error or missing asset.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run smoke
