@@ -71,7 +71,8 @@ if (isFeatureOn("newinventory")) { /* new behaviour */ } else { /* existing beha
 ```
 
 Josh turns one on with `?features=newinventory` on the preview or live URL
-(add `&features-save=1` to keep it on). Once approved, flip its default in
+(add `&features-save=1` to keep it on; `?features=-name` turns one off,
+`?features=none` turns all off). Once approved, flip its default in
 `FEATURE_DEFAULTS` in a follow-up PR, and later remove the old path.
 
 ## If production breaks
