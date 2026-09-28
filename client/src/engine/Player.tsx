@@ -176,6 +176,30 @@ const Player: React.FC = () => {
   }, [camera]);
 
   useEffect(() => {
+    const handleRespawn = () => {
+      const spawnY = findSurfaceY(0, 0);
+      camera.position.set(0.5, spawnY, 0.5);
+      camera.rotation.set(0, 0, 0, "YXZ");
+      velocityRef.current.set(0, 0, 0);
+      onGroundRef.current = false;
+      fallStartYRef.current = null;
+      useGame.setState({
+        playerPosition: camera.position.clone(),
+        playerRotation: {
+          x: camera.rotation.x,
+          y: camera.rotation.y,
+        },
+      });
+    };
+
+    window.addEventListener("playerRespawn", handleRespawn);
+    return () =>
+      window.removeEventListener("playerRespawn", handleRespawn);
+    // The event listener intentionally uses the current camera and world state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera]);
+
+  useEffect(() => {
     if (initialSave.data) return;
 
     let cancelled = false;
