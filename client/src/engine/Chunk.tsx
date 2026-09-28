@@ -116,6 +116,10 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
 
   if (!geometry) return null;
 
+  if (!meshData) return null;
+
+  const { geometry, materials } = meshData;
+
   return (
     <mesh
       position={position}
