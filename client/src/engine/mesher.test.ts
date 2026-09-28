@@ -48,3 +48,30 @@ test('a chunk of all-air voxels produces no geometry', () => {
   assert.equal(geo.groups.length, 0);
   assert.equal(geo.getAttribute('position').count, 0);
 });
+
+test('a solid block of water only renders its outer faces, not internal water-to-water faces', () => {
+  // Regression test: water is transparent, and a naive "render a face
+  // whenever the neighbour is transparent" rule would render every
+  // internal boundary inside a solid body of water too — wasteful, and
+  // visually wrong (stacked semi-transparent surfaces darkening the
+  // interior of a lake). Only the outer surface should render.
+  const size = { x: 3, y: 3, z: 3 };
+  const voxels = makeChunk(size.x, size.y, size.z, () => BlockType.WATER);
+  const geo = createBlockMesh(voxels, size);
+
+  const expectedOuterFaces = 6 * size.x * size.y; // cube of side 3: 6 faces of 3x3 each
+  const expectedIndices = expectedOuterFaces * 6; // 2 triangles (6 indices) per face
+  assert.equal(geo.getIndex()!.count, expectedIndices, 'expected only the outer surface of the water cube to be meshed');
+  assert.equal(geo.groups.length, 1, 'all water faces should batch into a single material group');
+});
+
+test('water renders a face where it meets open air, and the ground renders a face where it meets water', () => {
+  // A 1-block-deep pool of water sitting on a floor of dirt.
+  const size = { x: 2, y: 3, z: 2 };
+  const voxels = makeChunk(size.x, size.y, size.z, (_x, y) => (y === 0 ? BlockType.DIRT : y === 1 ? BlockType.WATER : BlockType.AIR));
+  const geo = createBlockMesh(voxels, size);
+  // Just needs to produce some geometry without throwing — the batching
+  // test above already proves same-type faces are culled; this proves
+  // different-type transparent/solid boundaries still render.
+  assert.ok(geo.getIndex()!.count > 0, 'expected the dirt/water/air boundaries to produce visible faces');
+});

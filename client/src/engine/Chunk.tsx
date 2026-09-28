@@ -60,6 +60,17 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
         opacity: 0.8,
         side: THREE.DoubleSide
       }),
+      // Water: a flat colour reads better than a stretched/tiled texture on
+      // a liquid surface. Translucent so the lakebed shows through, and
+      // double-sided so the underside is visible from below the surface.
+      new THREE.MeshStandardMaterial({
+        color: 0x3a7bd5,
+        roughness: 0.1,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.65,
+        side: THREE.DoubleSide,
+      }),
     ];
 
     if (chunkData?.dirty) chunkData.dirty = false;

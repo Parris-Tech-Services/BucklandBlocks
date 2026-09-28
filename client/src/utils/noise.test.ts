@@ -100,3 +100,47 @@ test('trees only grow on grassy, roughly-flat ground', () => {
   // ground to plausibly contain one, nothing throws and output is sane.
   assert.equal(typeof sawTree, 'boolean');
 });
+
+test('low-lying columns flood with water up to the water level', () => {
+  // Sample a wide area so we hit at least some naturally low terrain —
+  // water forms wherever a column's ground sits at/below the water level,
+  // it isn't guaranteed in any single fixed chunk.
+  let sawWater = false;
+  let sawWaterAboveLevel = false;
+  const WATER_LEVEL = 58; // baseHeight(64) - 6, mirrors noise.ts
+  for (let cx = -3; cx <= 3 && !sawWater; cx++) {
+    for (let cz = -3; cz <= 3; cz++) {
+      const voxels = generateChunkTerrain(cx * SIZE.x, 0, cz * SIZE.z, SIZE.x, SIZE.y, SIZE.z);
+      for (let x = 0; x < SIZE.x; x++) {
+        for (let z = 0; z < SIZE.z; z++) {
+          for (let y = 0; y < SIZE.y; y++) {
+            if (voxels[x + y * SIZE.x + z * SIZE.x * SIZE.y] === BlockType.WATER) {
+              sawWater = true;
+              if (y > WATER_LEVEL) sawWaterAboveLevel = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(sawWater, 'expected at least one water block within a 7x7 chunk sample');
+  assert.equal(sawWaterAboveLevel, false, 'water should never appear above the configured water level');
+});
+
+test('water does not float above open air — it always sits on solid ground or more water', () => {
+  const voxels = generateChunkTerrain(0, 0, 0, SIZE.x, SIZE.y, SIZE.z);
+  for (let x = 0; x < SIZE.x; x++) {
+    for (let z = 0; z < SIZE.z; z++) {
+      for (let y = 1; y < SIZE.y; y++) {
+        const idx = x + y * SIZE.x + z * SIZE.x * SIZE.y;
+        if (voxels[idx] === BlockType.WATER) {
+          const below = voxels[x + (y - 1) * SIZE.x + z * SIZE.x * SIZE.y];
+          assert.ok(
+            below === BlockType.WATER || isBlockSolid(below),
+            `water at y=${y} (x=${x},z=${z}) has open air beneath it at y=${y - 1}`
+          );
+        }
+      }
+    }
+  }
+});

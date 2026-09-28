@@ -9,7 +9,7 @@ export function createBlockMesh(
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
-  const indicesByMaterial: number[][] = Array.from({ length: 6 }, () => []);
+  const indicesByMaterial: number[][] = Array.from({ length: 7 }, () => []);
 
   let vertexIndex = 0;
 
@@ -135,6 +135,8 @@ export function createBlockMesh(
         materialIndex = 4; break;
       case BlockType.SKY:
         materialIndex = 5; break;
+      case BlockType.WATER:
+        materialIndex = 6; break;
       default:
         materialIndex = 0; break;
     }
@@ -154,7 +156,16 @@ export function createBlockMesh(
         for (let faceIndex = 0; faceIndex < 6; faceIndex++) {
           const [dx, dy, dz] = faceOffsets[faceIndex];
           const neighbor = getVoxel(x + dx, y + dy, z + dz);
-          if (isBlockTransparent(neighbor)) {
+          // Skip faces between two blocks of the *same* type even if that
+          // type is transparent (e.g. water-to-water) — otherwise every
+          // internal boundary inside a lake renders a face, which is both
+          // wasteful and visually wrong (stacked semi-transparent surfaces
+          // darkening the interior). A transparent block still gets a face
+          // against a different type (open air, or the lakebed as seen
+          // from the water side isn't needed either, since that side faces
+          // opaque ground — only the reverse, ground-facing-water, needs a
+          // face, and it already gets one here since water is transparent).
+          if (neighbor !== type && isBlockTransparent(neighbor)) {
             addFace(x, y, z, faceIndex, type);
           }
         }

@@ -78,6 +78,11 @@ export function generateChunkTerrain(
 
   const baseHeight = 64;
   const heightVariation = 14;
+  // Any column whose ground sits at or below this height floods up to it,
+  // forming lakes/ponds in low-lying terrain — matches the existing sand
+  // threshold below, so beaches form naturally at the water's edge instead
+  // of needing a separate rule.
+  const waterLevel = baseHeight - 6;
   // One full hill cycle spans roughly 1/frequency blocks — tuned for gentle
   // rolling terrain rather than a hill (or a chaotic jump) every block.
   const terrainFrequency = 1 / 48;
@@ -114,6 +119,8 @@ export function generateChunkTerrain(
           } else {
             voxelData[voxelIndex] = BlockType.GRASS;
           }
+        } else if (worldY <= waterLevel) {
+          voxelData[voxelIndex] = BlockType.WATER;
         } else {
           voxelData[voxelIndex] = BlockType.AIR;
         }
