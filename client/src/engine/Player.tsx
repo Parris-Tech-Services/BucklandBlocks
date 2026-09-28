@@ -113,6 +113,7 @@ const Player: React.FC = () => {
     inventory,
     inventoryCounts,
     addToInventory,
+    addDroppedItem,
     removeFromInventory,
     setBlock,
     getBlock,
@@ -382,7 +383,18 @@ const Player: React.FC = () => {
 
       const drops = getBlockDrops(blockType);
       drops.forEach((drop) => {
-        addToInventory(drop.id, drop.count);
+        const remaining = addToInventory(drop.id, drop.count);
+        if (remaining > 0) {
+          addDroppedItem(
+            drop.id,
+            remaining,
+            new THREE.Vector3(
+              Math.floor(x) + 0.5,
+              Math.floor(y) + 0.5,
+              Math.floor(z) + 0.5,
+            ),
+          );
+        }
       });
     }
 
