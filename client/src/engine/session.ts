@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Menu = "pause" | "inventory" | "crafting" | "crafting_table" | "furnace" | null;
+export type Menu = "pause" | "death" | "inventory" | "crafting" | "crafting_table" | "furnace" | null;
 
 interface Session {
   menu: Menu;
