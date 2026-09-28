@@ -18,6 +18,7 @@ const GameHUD: React.FC = () => {
   const menu = useSession((state) => state.menu);
   const setMenu = useSession((state) => state.setMenu);
   const hudVisible = useSession((state) => state.hudVisible);
+  const viewDistance = useSession((state) => state.viewDistance);
 
 
   const [popupName, setPopupName] = useState<string | null>(null);
@@ -75,6 +76,7 @@ const GameHUD: React.FC = () => {
           Time: {timeOfDay}:00 {isNight ? "🌙" : "☀️"}
         </div>
         <div>Biome: Temperate</div>
+        <div>View: {viewDistance} chunk{viewDistance === 1 ? "" : "s"}</div>
       </div>
 
       {/* Controls Help */}
@@ -91,6 +93,7 @@ const GameHUD: React.FC = () => {
         <div>Q: Drop stack</div>
         <div>Shift+Q: Drop one</div>
         <div>F1: Toggle HUD</div>
+        <div>+/-: View distance</div>
       </div>
 
 
