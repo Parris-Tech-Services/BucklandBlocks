@@ -82,18 +82,19 @@ function Game() {
     };
     const lock = () => {
       const locked = !!canvas && document.pointerLockElement === canvas;
+      const wasLocked = useSession.getState().pointerLocked;
       clear();
       useSession.setState({ pointerLocked: locked });
       if (locked) {
         setMenu(null);
-      } else if (useSession.getState().menu === null) {
+      } else if (wasLocked && useSession.getState().menu === null) {
         pause();
       }
     };
     const lockError = () => {
-      pause();
+      clear();
       useSession.setState({
-        error: "Mouse capture failed. Click Resume to try again.",
+        error: "Mouse capture is unavailable; continuing without captured mouse look.",
       });
     };
     const lost = (event: Event) => {
@@ -147,7 +148,9 @@ function Game() {
     if (!canvas || !ready) return;
 
     gameInput.clear();
-    useSession.setState({ error: null });
+    // Do not make pointer lock a prerequisite for starting the game. It is
+    // unavailable in some browsers, embeds, and accessibility configurations.
+    useSession.setState({ menu: null, pointerLocked: false, error: null });
 
     try {
       const request = canvas.requestPointerLock();
@@ -165,14 +168,17 @@ function Game() {
           })
           .catch(() => {
             useSession.setState({
-              menu: "pause",
-              error: "Mouse capture failed. Click Resume to try again.",
+              menu: null,
+              pointerLocked: false,
+              error: "Mouse capture is unavailable; continuing without captured mouse look.",
             });
           });
       }
     } catch {
       useSession.setState({
-        error: "Mouse capture is unavailable in this browser.",
+        menu: null,
+        pointerLocked: false,
+        error: "Mouse capture is unavailable; continuing without captured mouse look.",
       });
     }
   };

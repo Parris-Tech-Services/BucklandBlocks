@@ -18,5 +18,8 @@ export const useSession = create<Session>((set) => ({
 
 export const isGameplayActive = () => {
   const state = useSession.getState();
-  return state.menu === null && state.pointerLocked;
+  // Pointer lock improves mouse look, but some browsers and embedded
+  // deployments do not grant it. Resume must still activate keyboard and
+  // mouse gameplay in that fallback mode.
+  return state.menu === null;
 };
