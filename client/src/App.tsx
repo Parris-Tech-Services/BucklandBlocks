@@ -134,8 +134,11 @@ function Game() {
 
   useEffect(
     () =>
-      useSession.subscribe((state) => {
-        if (state.menu !== null) {
+      useSession.subscribe((state, previousState) => {
+        // Only release pointer lock when a menu is actually opened from
+        // gameplay. State updates while already paused (for example the
+        // pointer-lock result itself) must not immediately unlock again.
+        if (previousState.menu === null && state.menu !== null) {
           gameInput.clear();
           if (document.pointerLockElement) document.exitPointerLock();
         }
@@ -147,7 +150,15 @@ function Game() {
     if (!canvas || !ready) return;
 
     gameInput.clear();
-    useSession.setState({ error: null });
+
+    // Hide the pause menu before requesting pointer lock. Otherwise the
+    // menu-open subscriber can treat the pointer-lock state update as a
+    // reason to immediately release the lock again.
+    useSession.setState({
+      menu: null,
+      pointerLocked: false,
+      error: null,
+    });
 
     try {
       const request = canvas.requestPointerLock();
@@ -166,12 +177,15 @@ function Game() {
           .catch(() => {
             useSession.setState({
               menu: "pause",
+              pointerLocked: false,
               error: "Mouse capture failed. Click Resume to try again.",
             });
           });
       }
     } catch {
       useSession.setState({
+        menu: "pause",
+        pointerLocked: false,
         error: "Mouse capture is unavailable in this browser.",
       });
     }
