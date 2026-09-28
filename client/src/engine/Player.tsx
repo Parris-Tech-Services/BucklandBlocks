@@ -9,6 +9,7 @@ import { heldTool, idleMining, stepMining } from "./mining";
 import { createHitTimer, playBreak, playHit, playPlace } from "./sfx";
 import { hasSolidSupport } from "./placement";
 import { getFallDamage } from "./physics";
+import { AIR_TICK_SECONDS, DROWN_DAMAGE, DROWN_TICK_SECONDS, nextAir, shouldDrown } from "./breathing";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -120,6 +121,8 @@ const Player: React.FC = () => {
     getBlock,
     getChunk,
     damagePlayer,
+    setAir,
+    setSubmerged,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -130,6 +133,9 @@ const Player: React.FC = () => {
   const miningRef = useRef(idleMining());
   const hitTimerRef = useRef(createHitTimer());
   const fallStartYRef = useRef<number | null>(null);
+  const airTimerRef = useRef(0);
+  const drownTimerRef = useRef(0);
+  const submergedRef = useRef(false);
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -183,6 +189,9 @@ const Player: React.FC = () => {
       velocityRef.current.set(0, 0, 0);
       onGroundRef.current = false;
       fallStartYRef.current = null;
+      airTimerRef.current = 0;
+      drownTimerRef.current = 0;
+      submergedRef.current = false;
       useGame.setState({
         playerPosition: camera.position.clone(),
         playerRotation: {
@@ -315,6 +324,44 @@ const Player: React.FC = () => {
           Math.floor(camera.position.z),
         ) === BlockType.WATER,
     );
+
+    const headUnderwater =
+      getBlock(
+        Math.floor(camera.position.x),
+        Math.floor(camera.position.y),
+        Math.floor(camera.position.z),
+      ) === BlockType.WATER;
+
+    if (submergedRef.current !== headUnderwater) {
+      submergedRef.current = headUnderwater;
+      setSubmerged(headUnderwater);
+    }
+
+    airTimerRef.current += delta;
+    if (airTimerRef.current >= AIR_TICK_SECONDS) {
+      const steps = Math.floor(airTimerRef.current / AIR_TICK_SECONDS);
+      airTimerRef.current -= steps * AIR_TICK_SECONDS;
+
+      const currentAir = useGame.getState().air;
+      let updatedAir = currentAir;
+      for (let step = 0; step < steps; step++) {
+        updatedAir = nextAir(updatedAir, headUnderwater);
+      }
+      if (updatedAir !== currentAir) {
+        setAir(updatedAir);
+      }
+    }
+
+    const airNow = useGame.getState().air;
+    if (shouldDrown(airNow, headUnderwater)) {
+      drownTimerRef.current += delta;
+      while (drownTimerRef.current >= DROWN_TICK_SECONDS) {
+        drownTimerRef.current -= DROWN_TICK_SECONDS;
+        damagePlayer(DROWN_DAMAGE);
+      }
+    } else {
+      drownTimerRef.current = 0;
+    }
 
     const speed = inWater
       ? PLAYER_SPEED * (keys.sneak ? 0.35 : 0.65)
