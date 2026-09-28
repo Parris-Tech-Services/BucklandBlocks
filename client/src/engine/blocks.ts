@@ -24,7 +24,11 @@ export enum BlockType {
   CHEST = 22,
   FURNACE = 23,
   APPLE = 24,
-  CRAFTING_TABLE = 25
+  CRAFTING_TABLE = 25,
+  LEATHER_HELMET = 26,
+  LEATHER_CHESTPLATE = 27,
+  LEATHER_LEGGINGS = 28,
+  LEATHER_BOOTS = 29,
 }
 
 export interface BlockData {
@@ -41,6 +45,7 @@ export interface BlockData {
   maxDurability?: number;
   isTool?: boolean;
   toolType?: "pickaxe" | "axe" | "shovel" | "sword";
+  armorSlot?: "helmet" | "chestplate" | "leggings" | "boots";
   toolRequired?: string;
   drops?: { id: BlockType; count: number }[];
 }
@@ -165,6 +170,58 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     solid: true,
     placeable: true,
     maxStack: 64,
+  },
+  [BlockType.LEATHER_HELMET]: {
+    id: BlockType.LEATHER_HELMET,
+    name: "Leather Helmet",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    placeable: false,
+    maxStack: 1,
+    armorSlot: "helmet",
+  },
+  [BlockType.LEATHER_CHESTPLATE]: {
+    id: BlockType.LEATHER_CHESTPLATE,
+    name: "Leather Chestplate",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    placeable: false,
+    maxStack: 1,
+    armorSlot: "chestplate",
+  },
+  [BlockType.LEATHER_LEGGINGS]: {
+    id: BlockType.LEATHER_LEGGINGS,
+    name: "Leather Leggings",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    placeable: false,
+    maxStack: 1,
+    armorSlot: "leggings",
+  },
+  [BlockType.LEATHER_BOOTS]: {
+    id: BlockType.LEATHER_BOOTS,
+    name: "Leather Boots",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    placeable: false,
+    maxStack: 1,
+    armorSlot: "boots",
   },
 
   [BlockType.AIR]: {

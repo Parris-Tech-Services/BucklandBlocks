@@ -120,6 +120,7 @@ const Player: React.FC = () => {
     getBlock,
     getChunk,
     damagePlayer,
+    setBlockEntity,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -468,6 +469,9 @@ const Player: React.FC = () => {
           );
         }
       });
+      if (blockType === BlockType.CRAFTING_TABLE || blockType === BlockType.FURNACE) {
+        setBlockEntity(`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`, null);
+      }
     }
 
     if (
@@ -475,6 +479,16 @@ const Player: React.FC = () => {
       raycast &&
       now - lastActionRef.current > 200
     ) {
+      const targetId = `${raycast.position.x},${raycast.position.y},${raycast.position.z}`;
+      if (raycast.blockType === BlockType.CRAFTING_TABLE || raycast.blockType === BlockType.FURNACE) {
+        lastActionRef.current = now;
+        useSession.setState({
+          menu: raycast.blockType === BlockType.CRAFTING_TABLE ? "crafting_table" : "furnace",
+          currentEntityId: targetId,
+        });
+        return;
+      }
+
       const selectedBlockType = inventory[selectedSlot];
 
       if (
@@ -528,6 +542,16 @@ const Player: React.FC = () => {
             selectedBlockType,
           );
           playPlace(selectedBlockType);
+
+          if (selectedBlockType === BlockType.CRAFTING_TABLE || selectedBlockType === BlockType.FURNACE) {
+            setBlockEntity(`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`, {
+              id: `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`,
+              type: selectedBlockType,
+              inventory: [null, null, null],
+              counts: [0, 0, 0],
+              progress: 0,
+            });
+          }
 
           removeFromInventory(selectedSlot, 1);
         }

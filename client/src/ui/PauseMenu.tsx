@@ -11,6 +11,9 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
         inventory: { slots: state.inventory, counts: state.inventoryCounts, selectedSlot: state.selectedSlot },
         gameTime: state.gameTime,
         worldSeed: state.worldSeed,
+        armor: state.armor,
+        droppedItems: state.droppedItems.map((item) => ({ ...item, position: { x: item.position.x, y: item.position.y, z: item.position.z } })),
+        blockEntities: state.blockEntities,
         chunks: Array.from(state.chunks, ([key, chunk]) => {
           if (!chunk.dirty) return null;
           const [x, z] = key.split(',').map(Number);

@@ -25,6 +25,12 @@ function Game() {
   const setMenu = useSession((state) => state.setMenu);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
+  // Closing a screen forgets which furnace/crafting table was open, then
+  // returns to play through the same safe path as Resume.
+  const closeMenu = () => {
+    useSession.setState({ currentEntityId: undefined });
+    resume();
+  };
 
   useEffect(() => {
     const clear = () => gameInput.clear();
@@ -268,16 +274,16 @@ function Game() {
       <GameHUD />
 
       <div hidden={menu !== "inventory"}>
-        <Inventory onClose={resume} />
+        <Inventory onClose={closeMenu} />
       </div>
       <div hidden={menu !== "crafting"}>
-        <Crafting onClose={resume} />
+        <Crafting onClose={closeMenu} />
       </div>
       <div hidden={menu !== "crafting_table"}>
-        <CraftingTable onClose={resume} />
+        <CraftingTable onClose={closeMenu} />
       </div>
       <div hidden={menu !== "furnace"}>
-        <FurnaceUI onClose={resume} />
+        <FurnaceUI onClose={closeMenu} />
       </div>
 
       {menu === "pause" && (
