@@ -92,7 +92,6 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
-    toolRequired: "axe",
     drops: [{ id: BlockType.WOOD_LOG, count: 1 }],
   },
   [BlockType.WOOD_PLANK]: {
@@ -104,7 +103,6 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
-    toolRequired: "axe",
     drops: [{ id: BlockType.WOOD_PLANK, count: 1 }],
   },
   [BlockType.LEAF]: {
