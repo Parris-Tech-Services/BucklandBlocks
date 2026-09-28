@@ -3,6 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { BlockType, getBlockData } from "../../engine/blocks";
 import * as THREE from "three";
 import { readSave } from "../../engine/save";
+import { MAX_HEALTH } from "../../engine/physics";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -33,6 +34,8 @@ interface GameState {
   // Player state
   playerPosition: THREE.Vector3;
   playerRotation: { x: number; y: number };
+  health: number;
+  damagePlayer: (amount: number) => void;
   // Inventory
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
@@ -157,6 +160,8 @@ export const useGame = create<GameState>()(
         ? new THREE.Vector3(savedGame.playerPosition.x, savedGame.playerPosition.y, savedGame.playerPosition.z)
         : new THREE.Vector3(0, 70, 0),
       playerRotation: savedGame?.playerRotation || { x: 0, y: 0 },
+      health: MAX_HEALTH,
+      damagePlayer: (amount) => set((state) => ({ health: Math.max(0, state.health - Math.max(0, amount)) })),
       
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: loadedInventory,

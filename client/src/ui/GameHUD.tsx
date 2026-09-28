@@ -11,6 +11,7 @@ const GameHUD: React.FC = () => {
     gameTime,
     playerPosition,
     fps,
+    health,
   } = useGame();
 
 
@@ -44,6 +45,7 @@ const GameHUD: React.FC = () => {
       {/* HUD Info */}
       <div className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded font-mono text-sm">
         <div>FPS: {Math.round(fps)}</div>
+        <div>Health: {health}/20</div>
         <div>
           XYZ: {playerPosition.x.toFixed(1)}, {playerPosition.y.toFixed(1)},{" "}
           {playerPosition.z.toFixed(1)}
