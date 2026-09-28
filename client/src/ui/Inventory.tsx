@@ -23,7 +23,7 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     const data = getBlockData(type);
     if (!data) return;
     
-    useGame.setState({ cursorItem: { type, count: data.maxStack } });
+    useGame.setState({ cursorItem: { type, count: data.maxStack ?? 1 } });
   };
 
   const handleSort = (e: React.MouseEvent) => {
@@ -37,8 +37,9 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     // Sort main inventory (slots 9 to 35)
     // 1. Group identical items
     for (let i = 9; i < 36; i++) {
-      if (newInventory[i] === null) continue;
-      const maxStack = getBlockData(newInventory[i])?.maxStack ?? 64;
+      const type = newInventory[i];
+      if (type === null) continue;
+      const maxStack = getBlockData(type)?.maxStack ?? 64;
       for (let j = i + 1; j < 36; j++) {
         if (newInventory[j] === newInventory[i]) {
           const space = maxStack - newCounts[i];
@@ -53,10 +54,11 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     }
     
     // 2. Extract and sort non-empty slots by ID
-    const items = [];
+    const items: { type: BlockType; count: number }[] = [];
     for (let i = 9; i < 36; i++) {
-      if (newInventory[i] !== null) {
-        items.push({ type: newInventory[i], count: newCounts[i] });
+      const type = newInventory[i];
+      if (type !== null) {
+        items.push({ type, count: newCounts[i] });
         newInventory[i] = null;
         newCounts[i] = 0;
       }
