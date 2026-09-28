@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { clampViewDistance } from "./chunkStreaming";
 
 export type Menu = "pause" | "death" | "inventory" | "crafting" | "crafting_table" | "furnace" | null;
 
@@ -7,9 +8,11 @@ interface Session {
   pointerLocked: boolean;
   error: string | null;
   hudVisible: boolean;
+  viewDistance: number;
   currentEntityId?: string;
   setMenu: (menu: Menu) => void;
   toggleHud: () => void;
+  changeViewDistance: (delta: number) => void;
 }
 
 export const useSession = create<Session>((set) => ({
@@ -17,8 +20,13 @@ export const useSession = create<Session>((set) => ({
   pointerLocked: false,
   error: null,
   hudVisible: true,
+  viewDistance: 1,
   setMenu: (menu) => set({ menu }),
   toggleHud: () => set((state) => ({ hudVisible: !state.hudVisible })),
+  changeViewDistance: (delta) =>
+    set((state) => ({
+      viewDistance: clampViewDistance(state.viewDistance + delta),
+    })),
 }));
 
 export const isGameplayActive = () => {
