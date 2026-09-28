@@ -6,11 +6,17 @@ import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
 import { cleanChunkKeysToUnload } from "../../engine/chunkStreaming";
+import { createWorldSeed, normalizeWorldSeed } from "../../engine/worldSeed";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
 interface ChunkData {
   voxelData: Uint8Array;
+  /**
+   * True once the chunk holds player edits (or came from a save). Save World
+   * persists only dirty chunks, so this must never be cleared by rendering;
+   * remeshing is driven by voxelData/revision changes instead.
+   */
   dirty: boolean;
   revision: number;
 }
@@ -62,6 +68,7 @@ interface GameState {
   // World
   chunks: Map<string, ChunkData>;
   gameTime: number;
+  worldSeed: number;
   // FPS
   fps: number;
   setFps: (v: number) => void;
@@ -126,7 +133,7 @@ const bumpChunk = (
   });
 };
 
-const ensureStarterTools = (
+export const ensureStarterTools = (
   savedSlots: (BlockType | null)[] | undefined,
   savedCounts: number[] | undefined,
   fallbackSlots: (BlockType | null)[],
@@ -157,6 +164,9 @@ export const useGame = create<GameState>()(
   subscribeWithSelector((set, get) => {
     const savedGame = initialSave.data;
     const [initialInventory, initialCounts] = initializeInventory();
+    const worldSeed = normalizeWorldSeed(
+      savedGame ? savedGame.worldSeed ?? 0 : createWorldSeed(),
+    );
     const [loadedInventory, loadedInventoryCounts] = ensureStarterTools(
       savedGame?.inventory?.slots,
       savedGame?.inventory?.counts,
@@ -208,6 +218,7 @@ export const useGame = create<GameState>()(
       // Initial world state
       chunks: initialChunks,
       gameTime: savedGame?.gameTime || 0,
+      worldSeed,
       
   fps: 0,
   setFps: (v: number) => set({ fps: v }),
@@ -464,6 +475,15 @@ export const useGame = create<GameState>()(
 
         const newChunks = new Map(state.chunks);
         keysToUnload.forEach((key) => newChunks.delete(key));
+        // A neighbour of an unloaded chunk must remesh its border faces,
+        // mirroring what setChunk does when a neighbour arrives.
+        keysToUnload.forEach((key) => {
+          const [chunkX, chunkZ] = key.split(",").map(Number);
+          bumpChunk(newChunks, chunkX - 1, chunkZ);
+          bumpChunk(newChunks, chunkX + 1, chunkZ);
+          bumpChunk(newChunks, chunkX, chunkZ - 1);
+          bumpChunk(newChunks, chunkX, chunkZ + 1);
+        });
         return { chunks: newChunks };
       });
     },

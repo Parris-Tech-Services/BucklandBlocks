@@ -64,6 +64,15 @@ test('terrain height changes gradually between adjacent columns (no chaotic bloc
   );
 });
 
+test('the same world seed reproduces identical terrain and different seeds diverge', () => {
+  const first = generateChunkTerrain(0, 0, 0, SIZE.x, SIZE.y, SIZE.z, 12345);
+  const second = generateChunkTerrain(0, 0, 0, SIZE.x, SIZE.y, SIZE.z, 12345);
+  const alternate = generateChunkTerrain(0, 0, 0, SIZE.x, SIZE.y, SIZE.z, 54321);
+
+  assert.deepEqual(first, second);
+  assert.ok(first.some((block, index) => block !== alternate[index]));
+});
+
 test('terrain height stays within the configured variation band around sea level', () => {
   const voxels = generateChunkTerrain(0, 0, 0, SIZE.x, SIZE.y, SIZE.z);
   const heights = surfaceHeights(voxels);

@@ -72,7 +72,8 @@ export function generateChunkTerrain(
   chunkZ: number,
   sizeX: number,
   sizeY: number,
-  sizeZ: number
+  sizeZ: number,
+  seed = 0,
 ): Uint8Array {
   const voxelData = new Uint8Array(sizeX * sizeY * sizeZ);
 
@@ -85,6 +86,7 @@ export function generateChunkTerrain(
   const waterLevel = baseHeight - 6;
   // One full hill cycle spans roughly 1/frequency blocks — tuned for gentle
   // rolling terrain rather than a hill (or a chaotic jump) every block.
+  const worldSeed = Math.trunc(seed);
   const terrainFrequency = 1 / 48;
   // A second, much lower-frequency field selects broad regions (forest vs.
   // open field, sandy vs. grassy) — large coherent patches instead of a
@@ -96,10 +98,10 @@ export function generateChunkTerrain(
       const worldX = chunkX + x;
       const worldZ = chunkZ + z;
 
-      const heightNoise = fbm2D(worldX * terrainFrequency, worldZ * terrainFrequency, 4, 1);
+      const heightNoise = fbm2D(worldX * terrainFrequency, worldZ * terrainFrequency, 4, 1 + worldSeed);
       const terrainHeight = Math.round(baseHeight + (heightNoise * 2 - 1) * heightVariation);
 
-      const regionNoise = fbm2D(worldX * regionFrequency, worldZ * regionFrequency, 2, 4242);
+      const regionNoise = fbm2D(worldX * regionFrequency, worldZ * regionFrequency, 2, 4242 + worldSeed);
 
       for (let y = 0; y < sizeY; y++) {
         const worldY = chunkY + y;
@@ -134,12 +136,12 @@ export function generateChunkTerrain(
       const isGrassySurface = terrainHeight <= baseHeight + 8 && terrainHeight >= baseHeight - 6;
       const onTreeGrid = worldX % 3 === 0 && worldZ % 3 === 0;
       if (isGrassySurface && onTreeGrid) {
-        const forestDensity = fbm2D(worldX * regionFrequency * 1.5, worldZ * regionFrequency * 1.5, 2, 9001);
-        const plantHere = hashLattice(worldX, worldZ, 54321);
+        const forestDensity = fbm2D(worldX * regionFrequency * 1.5, worldZ * regionFrequency * 1.5, 2, 9001 + worldSeed);
+        const plantHere = hashLattice(worldX, worldZ, 54321 + worldSeed);
         // Higher forest density lowers the bar for a tree to spawn here,
         // so dense regions read as forest and sparse regions as open field.
         if (plantHere < forestDensity * 0.5) {
-          const treeHeight = 4 + Math.floor(hashLattice(worldX, worldZ, 98765) * 3);
+          const treeHeight = 4 + Math.floor(hashLattice(worldX, worldZ, 98765 + worldSeed) * 3);
           for (let treeY = 0; treeY < treeHeight; treeY++) {
             const y = terrainHeight + treeY;
             if (y < chunkY + sizeY) {

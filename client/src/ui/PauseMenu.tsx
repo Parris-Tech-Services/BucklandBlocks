@@ -10,6 +10,7 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
       writeSave({ playerPosition: { ...state.playerPosition }, playerRotation: state.playerRotation,
         inventory: { slots: state.inventory, counts: state.inventoryCounts, selectedSlot: state.selectedSlot },
         gameTime: state.gameTime,
+        worldSeed: state.worldSeed,
         chunks: Array.from(state.chunks, ([key, chunk]) => {
           if (!chunk.dirty) return null;
           const [x, z] = key.split(',').map(Number);

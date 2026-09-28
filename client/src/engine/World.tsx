@@ -25,6 +25,7 @@ const World: React.FC = () => {
   const setChunk = useGame((s) => s.setChunk);
   const getChunk = useGame((s) => s.getChunk);
   const unloadCleanChunks = useGame((s) => s.unloadCleanChunks);
+  const worldSeed = useGame((s) => s.worldSeed);
   const [renderedChunks, setRenderedChunks] = useState<Set<string>>(new Set());
   const lightsAdded = useRef(false);
 
@@ -108,6 +109,7 @@ const World: React.FC = () => {
           CHUNK_SIZE.x,
           CHUNK_SIZE.y,
           CHUNK_SIZE.z,
+          worldSeed,
         );
         if (osmData) {
           chunkData = processOSMData(
@@ -139,6 +141,7 @@ const World: React.FC = () => {
     getChunk,
     setChunk,
     unloadCleanChunks,
+    worldSeed,
   ]);
 
   if (isLoading) {
