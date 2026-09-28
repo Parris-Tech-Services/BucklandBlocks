@@ -19,6 +19,7 @@ import { gameInput } from "./engine/input";
 import { isGameplayActive, useSession } from "./engine/session";
 import { useGame } from "./lib/stores/useGame";
 import { cycleHotbarSlot } from "./engine/hotbar";
+import { menuKeyAction } from "./engine/menuKeys";
 import "@fontsource/inter";
 
 function Game() {
@@ -47,10 +48,20 @@ function Game() {
         return;
       }
       useSession.setState({ menu: null, error: null });
+      // Pointer lock is optional; gameplay continues without it. Newer
+      // browsers reject asynchronously, so handle both failure paths.
+      const unavailable = () =>
+        useSession.setState({
+          pointerLocked: false,
+          error: "Mouse capture is unavailable; continuing without captured mouse look.",
+        });
       try {
-        cvs.requestPointerLock();
+        const request = cvs.requestPointerLock();
+        if (request && typeof (request as PromiseLike<void>).then === "function") {
+          void Promise.resolve(request).catch(unavailable);
+        }
       } catch {
-        // Pointer lock is optional; gameplay continues without it.
+        unavailable();
       }
     };
 
@@ -63,31 +74,15 @@ function Game() {
 
       if (event.repeat) return;
       const current = useSession.getState().menu;
+      const menuAction = menuKeyAction(event.code, current, isGameplayActive());
 
       if (event.code === "Escape") {
         event.preventDefault();
         pause();
-      } else if (
-        event.code === "KeyE" &&
-        (isGameplayActive() || current === "inventory")
-      ) {
+      } else if (menuAction) {
         event.preventDefault();
-        if (current === "inventory") {
-          returnToGameplay();
-        } else {
-          setMenu("inventory");
-        }
-      } else if (
-        event.code === "KeyC" &&
-        (isGameplayActive() || current === "crafting")
-      ) {
-        event.preventDefault();
-        // Closing crafting with C returns to play, the same as E does.
-        if (current === "crafting") {
-          returnToGameplay();
-        } else {
-          setMenu("crafting");
-        }
+        if (menuAction.kind === "close") returnToGameplay();
+        else setMenu(menuAction.menu);
       } else if (/^Digit[1-9]$/.test(event.code) && isGameplayActive()) {
         window.dispatchEvent(
           new CustomEvent("hotbarSelect", {
