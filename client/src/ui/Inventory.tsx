@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Package, Box } from 'lucide-react';
 import { BlockType, getBlockData, BLOCKS } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
+import { applySlotInteraction } from '../engine/inventoryInteraction';
 
 interface InventoryProps {
   onClose: () => void;
@@ -85,103 +86,27 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
   const handleSlotClick = (e: React.MouseEvent, slotIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // We update the state by mutating a copy and using useGame.setState
+
     const state = useGame.getState();
-    const newInventory = [...state.inventory];
-    const newCounts = [...state.inventoryCounts];
-    let newCursor = state.cursorItem ? { ...state.cursorItem } : null;
-    
-    const slotType = newInventory[slotIndex];
-    const slotCount = newCounts[slotIndex];
-    
-    const rightClick = e.type === 'contextmenu' || e.button === 2;
-    
-    
-    const shiftClick = e.shiftKey;
-    
-    if (shiftClick && !newCursor && slotType !== null) {
-      // Quick move
-      const isHotbar = slotIndex < 9;
-      const startIdx = isHotbar ? 9 : 0;
-      const endIdx = isHotbar ? 36 : 9;
-      const maxStack = getBlockData(slotType)?.maxStack ?? 64;
-      
-      let remaining = slotCount;
-      // First try to merge
-      for (let i = startIdx; i < endIdx; i++) {
-        if (newInventory[i] === slotType && newCounts[i] < maxStack) {
-          const space = maxStack - newCounts[i];
-          const toMove = Math.min(space, remaining);
-          newCounts[i] += toMove;
-          remaining -= toMove;
-          if (remaining === 0) break;
-        }
-      }
-      // Then try empty slots
-      if (remaining > 0) {
-        for (let i = startIdx; i < endIdx; i++) {
-          if (newInventory[i] === null) {
-            newInventory[i] = slotType;
-            newCounts[i] = remaining;
-            remaining = 0;
-            break;
-          }
-        }
-      }
-      
-      if (remaining < slotCount) {
-        newCounts[slotIndex] = remaining;
-        if (remaining === 0) newInventory[slotIndex] = null;
-        useGame.setState({ inventory: newInventory, inventoryCounts: newCounts, cursorItem: newCursor });
-      }
-      return;
-    }
-    
-    if (newCursor) {
-      if (slotType === null) {
-        // Place into empty slot
-        const placeCount = rightClick ? 1 : newCursor.count;
-        newInventory[slotIndex] = newCursor.type;
-        newCounts[slotIndex] = placeCount;
-        newCursor.count -= placeCount;
-        if (newCursor.count <= 0) newCursor = null;
-      } else if (slotType === newCursor.type) {
-        // Merge
-        const maxStack = getBlockData(slotType)?.maxStack ?? 64;
-        const space = maxStack - slotCount;
-        if (space > 0) {
-          const placeCount = rightClick ? 1 : Math.min(newCursor.count, space);
-          newCounts[slotIndex] += placeCount;
-          newCursor.count -= placeCount;
-          if (newCursor.count <= 0) newCursor = null;
-        }
-      } else {
-        // Swap
-        if (!rightClick) {
-          const tempType = slotType;
-          const tempCount = slotCount;
-          newInventory[slotIndex] = newCursor.type;
-          newCounts[slotIndex] = newCursor.count;
-          newCursor = { type: tempType, count: tempCount };
-        }
-      }
-    } else {
-      if (slotType !== null) {
-        // Pick up
-        if (rightClick && slotCount > 1) {
-          const takeCount = Math.floor(slotCount / 2);
-          newCursor = { type: slotType, count: takeCount };
-          newCounts[slotIndex] -= takeCount;
-        } else {
-          newCursor = { type: slotType, count: slotCount };
-          newInventory[slotIndex] = null;
-          newCounts[slotIndex] = 0;
-        }
-      }
-    }
-    
-    useGame.setState({ inventory: newInventory, inventoryCounts: newCounts, cursorItem: newCursor });
+    const next = applySlotInteraction(
+      {
+        inventory: state.inventory,
+        counts: state.inventoryCounts,
+        cursor: state.cursorItem,
+      },
+      {
+        slotIndex,
+        rightClick: e.type === 'contextmenu' || e.button === 2,
+        shiftClick: e.shiftKey,
+      },
+    );
+
+    if (!next) return;
+    useGame.setState({
+      inventory: next.inventory,
+      inventoryCounts: next.counts,
+      cursorItem: next.cursor,
+    });
   };
 
   useEffect(() => {
