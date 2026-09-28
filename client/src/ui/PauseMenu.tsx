@@ -10,6 +10,7 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
       writeSave({ playerPosition: { ...state.playerPosition }, playerRotation: state.playerRotation,
         inventory: { slots: state.inventory, counts: state.inventoryCounts, selectedSlot: state.selectedSlot },
         gameTime: state.gameTime,
+        blockEntities: Object.values(state.blockEntities),
         worldSeed: state.worldSeed,
         chunks: Array.from(state.chunks, ([key, chunk]) => {
           if (!chunk.dirty) return null;

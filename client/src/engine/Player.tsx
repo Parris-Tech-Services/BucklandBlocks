@@ -9,6 +9,7 @@ import { heldTool, idleMining, stepMining } from "./mining";
 import { createHitTimer, playBreak, playHit, playPlace } from "./sfx";
 import { blockEntityContents, blockEntityKey, interactionMenuFor, newBlockEntity, resolveRightClick } from "./blockEntities";
 import { hasSolidSupport } from "./placement";
+import { isFeatureOn } from "./features";
 import { getFallDamage } from "./physics";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
@@ -486,13 +487,13 @@ const Player: React.FC = () => {
       now - lastActionRef.current > 200
     ) {
       // Right-clicking a crafting table or furnace opens it rather than
-      // placing a block against it.
+      // placing a block against it (behind the openblocks flag).
       const game = useGame.getState();
       const action = resolveRightClick(
         { blockType: raycast.blockType, ...raycast.position },
         (key) => Boolean(game.blockEntities[key]),
       );
-      if (action.kind === "open") {
+      if (action.kind === "open" && isFeatureOn("openblocks")) {
         lastActionRef.current = now;
         if (action.createEntity) {
           game.setBlockEntity(action.entityKey, newBlockEntity(action.entityKey, raycast.blockType));
@@ -555,7 +556,7 @@ const Player: React.FC = () => {
             selectedBlockType,
           );
           playPlace(selectedBlockType);
-          if (interactionMenuFor(selectedBlockType) === "furnace") {
+          if (isFeatureOn("openblocks") && interactionMenuFor(selectedBlockType) === "furnace") {
             const entityKey = blockEntityKey(x, y, z);
             useGame.getState().setBlockEntity(entityKey, newBlockEntity(entityKey, selectedBlockType));
           }
