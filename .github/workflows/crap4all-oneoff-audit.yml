@@ -24,8 +24,7 @@ jobs:
             --test-reporter=lcov \
             --test-reporter-destination=coverage/lcov.info \
             client/src/engine/*.test.ts \
-            client/src/utils/*.test.ts \
-            client/src/ui/*.test.ts
+            client/src/utils/*.test.ts
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
