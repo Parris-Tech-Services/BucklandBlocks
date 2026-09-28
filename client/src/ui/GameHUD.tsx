@@ -12,6 +12,7 @@ const GameHUD: React.FC = () => {
     gameTime,
     playerPosition,
     fps,
+    health,
   } = useGame();
   const menu = useSession((state) => state.menu);
 
@@ -32,6 +33,7 @@ const GameHUD: React.FC = () => {
   // Same time-of-day display you had
   const timeOfDay = Math.floor(((gameTime % 24000) / 24000) * 24);
   const isNight = timeOfDay >= 18 || timeOfDay < 6;
+  const displayedHealth = Math.max(0, Math.min(20, health));
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none">
@@ -76,6 +78,50 @@ const GameHUD: React.FC = () => {
           {popupName}
         </div>
       )}
+
+      {/* Minecraft-style health bar */}
+      <div
+        className="absolute bottom-[4.5rem] left-1/2 -translate-x-1/2 flex gap-0.5 rounded bg-black/35 px-1 py-0.5"
+        role="img"
+        aria-label={`Health: ${displayedHealth} out of 20`}
+      >
+        {Array.from({ length: 10 }, (_, i) => {
+          const heartHealth = Math.max(
+            0,
+            Math.min(2, displayedHealth - i * 2),
+          );
+          const fill =
+            heartHealth === 2
+              ? "100%"
+              : heartHealth === 1
+                ? "50%"
+                : "0%";
+
+          return (
+            <span
+              key={i}
+              className="relative inline-block h-4 w-4 text-center text-[18px] leading-4"
+              aria-hidden="true"
+            >
+              <span
+                className="absolute inset-0 text-black"
+                style={{ textShadow: "1px 1px 0 #000" }}
+              >
+                ♥
+              </span>
+              <span
+                className="absolute inset-y-0 left-0 overflow-hidden text-red-600"
+                style={{
+                  width: fill,
+                  textShadow: "1px 1px 0 #520000",
+                }}
+              >
+                <span className="inline-block w-4">♥</span>
+              </span>
+            </span>
+          );
+        })}
+      </div>
 
       {/* Hotbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
