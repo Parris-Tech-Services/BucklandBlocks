@@ -19,6 +19,9 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
     wood: "./textures/wood.jpg",
     sand: "./textures/sand.jpg",
     sky: "./textures/sky.png",
+    craftingTable: "./textures/crafting_table.png",
+    chest: "./textures/chest.png",
+    furnace: "./textures/furnace.png",
   });
 
   // crisp voxel look + correct color space.
@@ -71,11 +74,39 @@ const Chunk: React.FC<ChunkProps> = ({ chunkX, chunkZ, position, size }) => {
         opacity: 0.65,
         side: THREE.DoubleSide,
       }),
+      new THREE.MeshStandardMaterial({
+        map: textures.craftingTable,
+        roughness: 0.8,
+        metalness: 0,
+      }),
+      new THREE.MeshStandardMaterial({
+        map: textures.chest,
+        roughness: 0.8,
+        metalness: 0,
+      }),
+      new THREE.MeshStandardMaterial({
+        map: textures.furnace,
+        roughness: 0.9,
+        metalness: 0.05,
+      }),
     ];
 
     if (chunkData?.dirty) chunkData.dirty = false;
     return { geometry: geo, materials: mats };
-  }, [voxelData, size, textures.grass, textures.wood, textures.sand, textures.sky, chunkData]);
+  }, [
+    voxelData,
+    size,
+    textures.dirt,
+    textures.grass,
+    textures.stone,
+    textures.wood,
+    textures.sand,
+    textures.sky,
+    textures.craftingTable,
+    textures.chest,
+    textures.furnace,
+    chunkData,
+  ]);
 
   return (
     <mesh
