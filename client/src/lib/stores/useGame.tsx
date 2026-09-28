@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
+import { cleanChunkKeysToUnload } from "../../engine/chunkStreaming";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -80,6 +81,7 @@ interface GameState {
   setBlock: (x: number, y: number, z: number, blockType: BlockType) => void;
   getBlock: (x: number, y: number, z: number) => BlockType;
   setChunk: (chunkX: number, chunkZ: number, voxelData: Uint8Array) => void;
+  unloadCleanChunks: (keepKeys: ReadonlySet<string>) => void;
   getChunk: (chunkX: number, chunkZ: number) => Uint8Array | null;
   markChunkDirty: (chunkX: number, chunkZ: number) => void;
   // Time
@@ -451,6 +453,17 @@ export const useGame = create<GameState>()(
         bumpChunk(newChunks, chunkX, chunkZ - 1);
         bumpChunk(newChunks, chunkX, chunkZ + 1);
 
+        return { chunks: newChunks };
+      });
+    },
+
+    unloadCleanChunks: (keepKeys: ReadonlySet<string>) => {
+      set((state) => {
+        const keysToUnload = cleanChunkKeysToUnload(state.chunks, keepKeys);
+        if (keysToUnload.length === 0) return {};
+
+        const newChunks = new Map(state.chunks);
+        keysToUnload.forEach((key) => newChunks.delete(key));
         return { chunks: newChunks };
       });
     },
