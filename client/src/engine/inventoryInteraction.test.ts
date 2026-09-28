@@ -78,3 +78,55 @@ test("right click places one cursor item into an empty slot", () => {
   assert.equal(next.counts[5], 1);
   assert.deepEqual(next.cursor, { type: BlockType.STONE, count: 2 });
 });
+
+
+test("left click merges a cursor stack into a matching partial stack", () => {
+  const state = emptyState();
+  state.cursor = { type: BlockType.DIRT, count: 10 };
+  state.inventory[6] = BlockType.DIRT;
+  state.counts[6] = 60;
+
+  const next = applySlotInteraction(state, {
+    slotIndex: 6,
+    rightClick: false,
+    shiftClick: false,
+  });
+
+  assert.ok(next);
+  assert.equal(next.counts[6], 64);
+  assert.deepEqual(next.cursor, { type: BlockType.DIRT, count: 6 });
+});
+
+test("right click adds one item to a matching stack", () => {
+  const state = emptyState();
+  state.cursor = { type: BlockType.DIRT, count: 3 };
+  state.inventory[6] = BlockType.DIRT;
+  state.counts[6] = 12;
+
+  const next = applySlotInteraction(state, {
+    slotIndex: 6,
+    rightClick: true,
+    shiftClick: false,
+  });
+
+  assert.ok(next);
+  assert.equal(next.counts[6], 13);
+  assert.deepEqual(next.cursor, { type: BlockType.DIRT, count: 2 });
+});
+
+test("matching full stack leaves the cursor unchanged", () => {
+  const state = emptyState();
+  state.cursor = { type: BlockType.DIRT, count: 3 };
+  state.inventory[6] = BlockType.DIRT;
+  state.counts[6] = 64;
+
+  const next = applySlotInteraction(state, {
+    slotIndex: 6,
+    rightClick: false,
+    shiftClick: false,
+  });
+
+  assert.ok(next);
+  assert.equal(next.counts[6], 64);
+  assert.deepEqual(next.cursor, { type: BlockType.DIRT, count: 3 });
+});
