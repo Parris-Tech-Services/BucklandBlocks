@@ -52,7 +52,17 @@ function Game() {
         (isGameplayActive() || current === "inventory")
       ) {
         event.preventDefault();
-        setMenu(current === "inventory" ? "pause" : "inventory");
+        if (current === "inventory") {
+          const cvs = document.querySelector('canvas');
+          if (cvs) {
+            useSession.setState({ menu: null, error: null });
+            try { cvs.requestPointerLock(); } catch(e) {}
+          } else {
+            setMenu("pause");
+          }
+        } else {
+          setMenu("inventory");
+        }
       } else if (
         event.code === "KeyC" &&
         (isGameplayActive() || current === "crafting")
@@ -225,16 +235,48 @@ function Game() {
       <GameHUD />
 
       <div hidden={menu !== "inventory"}>
-        <Inventory onClose={() => setMenu("pause")} />
+        <Inventory onClose={() => {
+          const cvs = document.querySelector('canvas');
+          if (cvs) {
+            useSession.setState({ menu: null, error: null });
+            try { cvs.requestPointerLock(); } catch(e) {}
+          } else {
+            setMenu("pause");
+          }
+        }} />
       </div>
       <div hidden={menu !== "crafting"}>
-        <Crafting onClose={() => setMenu("pause")} />
+        <Crafting onClose={() => {
+          const cvs = document.querySelector('canvas');
+          if (cvs) {
+            useSession.setState({ menu: null, error: null });
+            try { cvs.requestPointerLock(); } catch(e) {}
+          } else {
+            setMenu("pause");
+          }
+        }} />
       </div>
       <div hidden={menu !== "crafting_table"}>
-        <CraftingTable onClose={() => setMenu("pause")} />
+        <CraftingTable onClose={() => {
+          const cvs = document.querySelector('canvas');
+          if (cvs) {
+            useSession.setState({ menu: null, error: null });
+            try { cvs.requestPointerLock(); } catch(e) {}
+          } else {
+            setMenu("pause");
+          }
+        }} />
       </div>
       <div hidden={menu !== "furnace"}>
-        <FurnaceUI onClose={() => setMenu("pause")} />
+        <FurnaceUI onClose={() => {
+          const cvs = document.querySelector('canvas');
+          if (cvs) {
+            useSession.setState({ menu: null, error: null });
+            try { cvs.requestPointerLock(); } catch(e) {}
+          } else {
+            setMenu("pause");
+          }
+        }} />
       </div>
 
       {menu === "pause" && (
