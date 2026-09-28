@@ -5,14 +5,14 @@ import * as THREE from "three";
 import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
+import {
+  setBlockInChunks,
+  type MutableWorldChunk,
+} from "../../engine/worldBlocks";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
-interface ChunkData {
-  voxelData: Uint8Array;
-  dirty: boolean;
-  revision: number;
-}
+type ChunkData = MutableWorldChunk;
 
 
 
@@ -106,22 +106,6 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   counts[6] = 1;
   
   return [inventory, counts];
-};
-
-const bumpChunk = (
-  chunks: Map<string, ChunkData>,
-  chunkX: number,
-  chunkZ: number,
-  markDirty = false,
-) => {
-  const key = `${chunkX},${chunkZ}`;
-  const chunk = chunks.get(key);
-  if (!chunk) return;
-  chunks.set(key, {
-    ...chunk,
-    dirty: chunk.dirty || markDirty,
-    revision: chunk.revision + 1,
-  });
 };
 
 const ensureStarterTools = (
@@ -371,47 +355,12 @@ export const useGame = create<GameState>()(
     
     // World actions
     setBlock: (x: number, y: number, z: number, blockType: BlockType) => {
-      const blockX = Math.floor(x);
-      const blockY = Math.floor(y);
-      const blockZ = Math.floor(z);
-      if (blockY < 0 || blockY >= 128) return;
-
-      const chunkSize = 16;
-      const chunkX = Math.floor(blockX / chunkSize);
-      const chunkZ = Math.floor(blockZ / chunkSize);
-      const localX = blockX - chunkX * chunkSize;
-      const localZ = blockZ - chunkZ * chunkSize;
-      const chunkKey = `${chunkX},${chunkZ}`;
-
       set((state) => {
-        const chunk = state.chunks.get(chunkKey);
-        if (!chunk) return {};
-
-        const index =
-          localX +
-          blockY * chunkSize +
-          localZ * chunkSize * 128;
-        if (chunk.voxelData[index] === blockType) return {};
-
-        const newChunks = new Map(state.chunks);
-        const newVoxelData = new Uint8Array(chunk.voxelData);
-        newVoxelData[index] = blockType;
-
-        newChunks.set(chunkKey, {
-          voxelData: newVoxelData,
-          dirty: true,
-          revision: chunk.revision + 1,
-        });
-
-        if (localX === 0) bumpChunk(newChunks, chunkX - 1, chunkZ);
-        if (localX === chunkSize - 1) bumpChunk(newChunks, chunkX + 1, chunkZ);
-        if (localZ === 0) bumpChunk(newChunks, chunkX, chunkZ - 1);
-        if (localZ === chunkSize - 1) bumpChunk(newChunks, chunkX, chunkZ + 1);
-
-        return { chunks: newChunks };
+        const chunks = setBlockInChunks(state.chunks, x, y, z, blockType);
+        return chunks ? { chunks } : {};
       });
     },
-
+    
     getBlock: (x: number, y: number, z: number): BlockType => {
       const blockX = Math.floor(x);
       const blockY = Math.floor(y);
