@@ -199,10 +199,13 @@ export const useGame = create<GameState>()(
         const localY = y;
         
         const index = localX + localY * chunkSize + localZ * chunkSize * 128;
-        chunk.voxelData[index] = blockType;
-        chunk.dirty = true;
+        const newVoxelData = new Uint8Array(chunk.voxelData);
+        newVoxelData[index] = blockType;
         
-        set({ chunks: new Map(state.chunks) });
+        const newChunks = new Map(state.chunks);
+        newChunks.set(chunkKey, { voxelData: newVoxelData, dirty: true });
+        
+        set({ chunks: newChunks });
       }
     },
     
