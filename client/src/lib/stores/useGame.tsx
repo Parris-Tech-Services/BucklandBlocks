@@ -68,7 +68,7 @@ interface GameState {
   setPlayerRotation: (rotation: { x: number; y: number }) => void;
   // Inventory actions
   setSelectedSlot: (slot: number) => void;
-  addToInventory: (blockType: BlockType, count?: number) => void;
+  addToInventory: (blockType: BlockType, count?: number) => number;
   removeFromInventory: (slot: number, count?: number) => void;
   // World actions
   setBlock: (x: number, y: number, z: number, blockType: BlockType) => void;
