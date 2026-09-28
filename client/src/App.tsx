@@ -17,6 +17,10 @@ import { gameInput } from "./engine/input";
 import { isGameplayActive, useSession } from "./engine/session";
 import { useGame } from "./lib/stores/useGame";
 import { cycleHotbarSlot } from "./engine/hotbar";
+import {
+  executeKeyboardCommand,
+  resolveKeyboardCommand,
+} from "./engine/keyboardCommands";
 import "@fontsource/inter";
 
 function Game() {
@@ -36,66 +40,55 @@ function Game() {
       target instanceof HTMLElement &&
       (target.isContentEditable || !!target.closest("input, textarea, select"));
 
+    const closeInventory = () => {
+      const gameCanvas = document.querySelector("canvas");
+      if (!gameCanvas) {
+        setMenu("pause");
+        return;
+      }
+
+      useSession.setState({ menu: null, error: null });
+      try {
+        gameCanvas.requestPointerLock();
+      } catch {
+        // Pointer lock is an enhancement. Gameplay remains usable without it.
+      }
+    };
+
+    const keyboardActions = {
+      pause,
+      openInventory: () => setMenu("inventory"),
+      closeInventory,
+      openCrafting: () => setMenu("crafting"),
+      closeCrafting: () => setMenu("pause"),
+      selectHotbar: (slot: number) =>
+        window.dispatchEvent(new CustomEvent("hotbarSelect", { detail: slot })),
+      dropSelected: (wholeStack: boolean) =>
+        useGame.getState().dropSelectedItem(wholeStack),
+      toggleHud: () => useSession.getState().toggleHud(),
+      changeViewDistance: (delta: 1 | -1) =>
+        useSession.getState().changeViewDistance(delta),
+    };
+
     const down = (event: KeyboardEvent) => {
       if (editable(event.target)) return;
 
-      if (gameInput.key(event.code, true, isGameplayActive())) {
+      const active = isGameplayActive();
+      if (gameInput.key(event.code, true, active)) {
         event.preventDefault();
       }
-
       if (event.repeat) return;
-      const current = useSession.getState().menu;
 
-      if (event.code === "Escape") {
-        event.preventDefault();
-        pause();
-      } else if (
-        event.code === "KeyE" &&
-        (isGameplayActive() || current === "inventory")
-      ) {
-        event.preventDefault();
-        if (current === "inventory") {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        } else {
-          setMenu("inventory");
-        }
-      } else if (
-        event.code === "KeyC" &&
-        (isGameplayActive() || current === "crafting")
-      ) {
-        event.preventDefault();
-        setMenu(current === "crafting" ? "pause" : "crafting");
-      } else if (/^Digit[1-9]$/.test(event.code) && isGameplayActive()) {
-        window.dispatchEvent(
-          new CustomEvent("hotbarSelect", {
-            detail: Number(event.code.slice(-1)) - 1,
-          }),
-        );
-      } else if (event.code === "KeyQ" && isGameplayActive()) {
-        event.preventDefault();
-        useGame.getState().dropSelectedItem(event.shiftKey);
-      } else if (event.code === "F1") {
-        event.preventDefault();
-        useSession.getState().toggleHud();
-      } else if (
-        (event.code === "Equal" || event.code === "NumpadAdd") &&
-        isGameplayActive()
-      ) {
-        event.preventDefault();
-        useSession.getState().changeViewDistance(1);
-      } else if (
-        (event.code === "Minus" || event.code === "NumpadSubtract") &&
-        isGameplayActive()
-      ) {
-        event.preventDefault();
-        useSession.getState().changeViewDistance(-1);
-      }
+      const command = resolveKeyboardCommand(
+        event.code,
+        useSession.getState().menu,
+        active,
+        event.shiftKey,
+      );
+      if (!command) return;
+
+      event.preventDefault();
+      executeKeyboardCommand(command, keyboardActions);
     };
 
     const up = (event: KeyboardEvent) => {
