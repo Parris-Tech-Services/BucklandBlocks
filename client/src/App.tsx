@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useState } from "react";
 import * as THREE from "three";
 import World from "./engine/World";
+import DroppedItems from "./engine/DroppedItems";
 import Player from "./engine/Player";
 import DayNightCycle from "./engine/DayNightCycle";
 import GameHUD from "./ui/GameHUD";
@@ -214,6 +215,7 @@ function Game() {
         <Suspense fallback={null}>
           <DayNightCycle />
           <World />
+          <DroppedItems />
           <Player />
           <HooksBridge />
         </Suspense>

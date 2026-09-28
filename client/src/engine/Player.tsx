@@ -42,6 +42,8 @@ const Player: React.FC = () => {
   const onGroundRef = useRef(false);
   const [targetBlock, setTargetBlock] = useState<RaycastHit | null>(null);
   const lastActionRef = useRef(0);
+  const miningProgressRef = useRef(0);
+  const miningTargetRef = useRef<THREE.Vector3 | null>(null);
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
