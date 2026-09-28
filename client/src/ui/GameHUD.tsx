@@ -13,8 +13,10 @@ const GameHUD: React.FC = () => {
     playerPosition,
     fps,
     health,
+    respawn,
   } = useGame();
   const menu = useSession((state) => state.menu);
+  const setMenu = useSession((state) => state.setMenu);
 
 
   const [popupName, setPopupName] = useState<string | null>(null);
@@ -29,6 +31,18 @@ const GameHUD: React.FC = () => {
       setPopupName(null);
     }
   }, [selectedSlot, inventory]);
+
+  useEffect(() => {
+    if (health <= 0 && menu !== "death") {
+      setMenu("death");
+    }
+  }, [health, menu, setMenu]);
+
+  const handleRespawn = () => {
+    respawn();
+    window.dispatchEvent(new Event("playerRespawn"));
+    setMenu(null);
+  };
 
   // Same time-of-day display you had
   const timeOfDay = Math.floor(((gameTime % 24000) / 24000) * 24);
@@ -156,6 +170,26 @@ const GameHUD: React.FC = () => {
           })}
         </div>
       </div>
+
+      {menu === "death" && (
+        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/65">
+          <div className="rounded border-2 border-red-700 bg-black/90 px-10 py-8 text-center text-white shadow-2xl">
+            <h2 className="font-mono text-4xl font-bold text-red-500">
+              You Died
+            </h2>
+            <p className="mt-3 font-mono text-lg">
+              Health reached zero.
+            </p>
+            <button
+              type="button"
+              onClick={handleRespawn}
+              className="mt-6 rounded border-2 border-white bg-gray-800 px-8 py-3 font-mono text-lg font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white"
+            >
+              Respawn
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
