@@ -3,9 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 import { initSoundPreference } from "./engine/sfx";
+import { isFeatureOn } from "./engine/features";
 
 // Apply the player's saved sound on/off choice before any sound can play.
-initSoundPreference();
+if (isFeatureOn("soundtoggle")) initSoundPreference();
 
 const queryClient = new QueryClient({
   defaultOptions: {
