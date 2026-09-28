@@ -1,5 +1,9 @@
-name: One-off crap4all audit
+name: CRAP4all quality gate
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -99,5 +103,11 @@ jobs:
               st=int(getattr(f,'start_line',1) or 1); ns=int(getattr(fns[i+1],'start_line',st+1))-1 if i+1<len(fns) else st; end=getattr(f,'end_line',None); nl=int(getattr(f,'nloc',1) or 1); end=end if isinstance(end,int) and end>=st else max(st,st+nl-1,ns); ins={n:h for n,h in hits.items() if st<=n<=end}; ic=len(ins); ccov=sum(1 for h in ins.values() if h>0); cv=ccov/ic if ic else 0.0; cc=int(getattr(f,'cyclomatic_complexity',1) or 1); crap=round(cc**2*((1-cv)**3)+cc,2); cs=('measured' if ccov else 'uncovered') if ic else ('ambiguous' if ms=='ambiguous' else 'unavailable'); scores.append((crap,cc,rel,st,{'file':rel,'function':str(getattr(f,'long_name',None) or getattr(f,'name','<anonymous>')),'start_line':st,'end_line':end,'complexity':cc,'coverage':round(cv,4),'coverage_status':cs,'coverage_kind':'line' if ic else 'none','coverage_match':strat,'confidence':conf}))
           scores.sort(key=lambda x:(-x[0],-x[1],x[2],x[3])); result={'repo':os.environ.get('GITHUB_REPOSITORY'),'source_sha':os.environ.get('GITHUB_SHA'),'audit_method':'crap4all 0.1.0-compatible inline snapshot','files_scanned':len(files),'functions_scored':len(scores),'languages':dict(sorted(counts.items(),key=lambda x:(-x[1],x[0]))),'coverage_files':loaded,'headline_crap':scores[0][0] if scores else None,'worst':scores[0][4] if scores else None}
           print('CRAP4ALL_RESULT='+json.dumps(result,separators=(',',':')))
+          threshold=30.0
+          headline=result['headline_crap']
+          if headline is not None and headline >= threshold:
+            print(f'CRAP4ALL_GATE=FAIL headline={headline} threshold=< {threshold}')
+            raise SystemExit(1)
+          print(f'CRAP4ALL_GATE=PASS headline={headline} threshold=< {threshold}')
           PY
           python /tmp/crap4all_audit.py
