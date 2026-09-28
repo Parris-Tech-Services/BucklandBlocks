@@ -17,11 +17,17 @@ type Action =
   | "mine"
   | "place";
 
+type MouseAction = "mine" | "place";
+
 export function createGameInput() {
   const held = new Set<string>();
+  const pressed = new Set<MouseAction>();
 
   return {
-    clear: () => held.clear(),
+    clear: () => {
+      held.clear();
+      pressed.clear();
+    },
 
     key(code: string, down: boolean, active: boolean) {
       if (!(code in bindings)) return false;
@@ -36,16 +42,32 @@ export function createGameInput() {
     },
 
     mouse(button: number, down: boolean, active: boolean) {
-      const key =
+      const action: MouseAction | null =
         button === 0 ? "mine" : button === 2 ? "place" : null;
 
-      if (!key) return;
+      if (!action) return false;
 
       if (!down) {
-        held.delete(key);
+        held.delete(action);
       } else if (active) {
-        held.add(key);
+        held.add(action);
+        // Keep one discrete click queued until the game loop consumes it.
+        // This prevents a quick down/up click between animation frames from
+        // being lost before mining or placement can run.
+        pressed.add(action);
       }
+
+      return active;
+    },
+
+    hasMousePress(action: MouseAction) {
+      return pressed.has(action);
+    },
+
+    consumeMousePress(action: MouseAction) {
+      const hadPress = pressed.has(action);
+      pressed.delete(action);
+      return hadPress;
     },
 
     read(): Record<Action, boolean> {
