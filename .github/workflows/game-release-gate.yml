@@ -1,0 +1,45 @@
+name: Game Release Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: game-release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Critical regression guard
+        run: node scripts/release-guard.mjs
+
+      - name: TypeScript check
+        run: npm run check
+
+      - name: Engine tests
+        run: npm test
+
+      - name: Production client build
+        run: npm run build:client
