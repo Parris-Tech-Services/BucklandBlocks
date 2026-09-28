@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { BlockType } from "../../engine/blocks";
+import { BlockType, getBlockData } from "../../engine/blocks";
 import * as THREE from "three";
 import { readSave } from "../../engine/save";
 
@@ -11,6 +11,14 @@ interface ChunkData {
   dirty: boolean;
 }
 
+
+export interface DroppedItem {
+  id: string;
+  type: BlockType;
+  count: number;
+  position: THREE.Vector3;
+}
+
 interface GameState {
   phase: GamePhase;
   // Player state
@@ -19,7 +27,11 @@ interface GameState {
   // Inventory
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
+  
   armor: (BlockType | null)[];
+  droppedItems: DroppedItem[];
+  addDroppedItem: (type: BlockType, count: number, position: THREE.Vector3) => void;
+  removeDroppedItem: (id: string) => void;
   selectedSlot: number;
   // World
   chunks: Map<string, ChunkData>;
@@ -97,6 +109,7 @@ export const useGame = create<GameState>()(
       inventory: savedGame?.inventory?.slots || initialInventory,
       inventoryCounts: savedGame?.inventory?.counts || initialCounts,
       armor: savedGame?.armor || new Array(4).fill(null),
+      droppedItems: savedGame?.droppedItems || [],
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state
@@ -141,32 +154,66 @@ export const useGame = create<GameState>()(
       set({ selectedSlot: Math.max(0, Math.min(8, slot)) });
     },
     
+    
+    removeDroppedItem: (id) => set((state) => ({ 
+      droppedItems: state.droppedItems.filter(item => item.id !== id) 
+    })),
+    addDroppedItem: (type, count, position) => set((state) => {
+      // Find nearby items of same type to merge
+      const mergeDist = 2.0;
+      const existing = state.droppedItems.find(i => 
+        i.type === type && i.position.distanceTo(position) < mergeDist
+      );
+      
+      if (existing) {
+        return {
+          droppedItems: state.droppedItems.map(i => 
+            i.id === existing.id ? { ...i, count: i.count + count } : i
+          )
+        };
+      }
+      
+      return {
+        droppedItems: [
+          ...state.droppedItems, 
+          { id: Math.random().toString(36).substring(7), type, count, position: position.clone() }
+        ]
+      };
+    }),
+    
     addToInventory: (blockType: BlockType, count: number = 1) => {
+      let remaining = count;
       set((state) => {
         const newInventory = [...state.inventory];
         const newCounts = [...state.inventoryCounts];
+        const maxStack = getBlockData(blockType)?.maxStack ?? 64;
         
-        // Try to stack with existing items first
         for (let i = 0; i < newInventory.length; i++) {
-          if (newInventory[i] === blockType) {
-            newCounts[i] += count;
-            return { inventory: newInventory, inventoryCounts: newCounts };
+          if (newInventory[i] === blockType && newCounts[i] < maxStack) {
+            const space = maxStack - newCounts[i];
+            const toAdd = Math.min(space, remaining);
+            newCounts[i] += toAdd;
+            remaining -= toAdd;
+            if (remaining === 0) break;
           }
         }
         
-        // Find empty slot
-        for (let i = 0; i < newInventory.length; i++) {
-          if (newInventory[i] === null) {
-            newInventory[i] = blockType;
-            newCounts[i] = count;
-            return { inventory: newInventory, inventoryCounts: newCounts };
+        if (remaining > 0) {
+          for (let i = 0; i < newInventory.length; i++) {
+            if (newInventory[i] === null) {
+              newInventory[i] = blockType;
+              const toAdd = Math.min(maxStack, remaining);
+              newCounts[i] = toAdd;
+              remaining -= toAdd;
+              if (remaining === 0) break;
+            }
           }
         }
         
-        // Inventory full
-        console.warn('Inventory full!');
-        return {};
+        if (remaining > 0) console.warn('Inventory full!');
+        return { inventory: newInventory, inventoryCounts: newCounts };
       });
+      return remaining;
     },
     
     removeFromInventory: (slot: number, count: number = 1) => {

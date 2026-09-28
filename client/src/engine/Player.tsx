@@ -30,6 +30,7 @@ const Player: React.FC = () => {
     inventory,
     inventoryCounts,
     addToInventory,
+    addDroppedItem,
     removeFromInventory,
     setBlock,
     getBlock,
@@ -277,7 +278,16 @@ const Player: React.FC = () => {
       markChunkDirty(chunkX, chunkZ);
 
       const drops = getBlockDrops(blockType);
-      drops.forEach((drop) => addToInventory(drop.id, drop.count));
+      drops.forEach((drop) => {
+        const remaining = addToInventory(drop.id, drop.count);
+        if (remaining > 0) {
+          // Drop the item in the world slightly in front of the player
+          const dropPos = camera.position.clone();
+          const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+          dropPos.add(dir.multiplyScalar(2));
+          addDroppedItem(drop.id, remaining, dropPos);
+        }
+      });
     }
 
     if (

@@ -26,6 +26,12 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
   const handleDropOutside = (e: React.MouseEvent) => {
     e.preventDefault();
     if (cursorItem) {
+      const state = useGame.getState();
+      const pos = state.playerPosition.clone();
+      // Drop in front of player roughly
+      pos.z -= 2;
+      pos.y += 1;
+      state.addDroppedItem(cursorItem.type, cursorItem.count, pos);
       useGame.setState({ cursorItem: null });
     }
   };
