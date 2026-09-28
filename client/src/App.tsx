@@ -38,6 +38,22 @@ function Game() {
       target instanceof HTMLElement &&
       (target.isContentEditable || !!target.closest("input, textarea, select"));
 
+    // Close a menu opened from gameplay straight back into play, recapturing
+    // the mouse when possible (the same path for the E and C toggles).
+    const returnToGameplay = () => {
+      const cvs = document.querySelector("canvas");
+      if (!cvs) {
+        setMenu("pause");
+        return;
+      }
+      useSession.setState({ menu: null, error: null });
+      try {
+        cvs.requestPointerLock();
+      } catch {
+        // Pointer lock is optional; gameplay continues without it.
+      }
+    };
+
     const down = (event: KeyboardEvent) => {
       if (editable(event.target)) return;
 
@@ -57,13 +73,7 @@ function Game() {
       ) {
         event.preventDefault();
         if (current === "inventory") {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
+          returnToGameplay();
         } else {
           setMenu("inventory");
         }
@@ -72,7 +82,12 @@ function Game() {
         (isGameplayActive() || current === "crafting")
       ) {
         event.preventDefault();
-        setMenu(current === "crafting" ? "pause" : "crafting");
+        // Closing crafting with C returns to play, the same as E does.
+        if (current === "crafting") {
+          returnToGameplay();
+        } else {
+          setMenu("crafting");
+        }
       } else if (/^Digit[1-9]$/.test(event.code) && isGameplayActive()) {
         window.dispatchEvent(
           new CustomEvent("hotbarSelect", {
