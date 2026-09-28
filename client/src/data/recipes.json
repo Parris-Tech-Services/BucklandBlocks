@@ -1,38 +1,23 @@
 [
   {
     "id": "logs_to_planks",
+    "name": "Wood Planks",
     "result": { "type": 5, "count": 4 },
-    "ingredients": [{ "type": 4, "count": 1 }],
-    "pattern": ["L"]
-  },
-  {
-    "id": "planks_to_sticks",
-    "result": { "type": 4, "count": 4 },
-    "ingredients": [{ "type": 5, "count": 2 }],
-    "pattern": ["P", "P"]
-  },
-  {
-    "id": "cobble_pickaxe",
-    "result": { "type": 12, "count": 1 },
-    "ingredients": [
-      { "type": 12, "count": 3 },
-      { "type": 4, "count": 2 }
-    ],
-    "pattern": ["CCC", " S ", " S "]
+    "ingredients": [{ "type": 4, "count": 1 }]
   },
   {
     "id": "torch",
+    "name": "Torches",
     "result": { "type": 9, "count": 4 },
     "ingredients": [
       { "type": 12, "count": 1 },
-      { "type": 4, "count": 1 }
-    ],
-    "pattern": ["C", "S"]
+      { "type": 5, "count": 1 }
+    ]
   },
   {
     "id": "door",
+    "name": "Wooden Door",
     "result": { "type": 13, "count": 1 },
-    "ingredients": [{ "type": 5, "count": 6 }],
-    "pattern": ["PP", "PP", "PP"]
+    "ingredients": [{ "type": 5, "count": 6 }]
   }
 ]
