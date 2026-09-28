@@ -66,6 +66,189 @@ function fbm2D(x: number, y: number, octaves: number, seed: number): number {
   return value / maxValue;
 }
 
+const BASE_HEIGHT = 64;
+const HEIGHT_VARIATION = 14;
+const WATER_LEVEL = BASE_HEIGHT - 6;
+const TERRAIN_FREQUENCY = 1 / 48;
+const REGION_FREQUENCY = 1 / 96;
+
+type ColumnContext = {
+  voxelData: Uint8Array;
+  x: number;
+  z: number;
+  chunkY: number;
+  sizeX: number;
+  sizeY: number;
+  sizeZ: number;
+  terrainHeight: number;
+  regionNoise: number;
+};
+
+function voxelIndex(x: number, y: number, z: number, sizeX: number, sizeY: number): number {
+  return x + y * sizeX + z * sizeX * sizeY;
+}
+
+function surfaceBlock(terrainHeight: number, regionNoise: number): BlockType {
+  if (terrainHeight > BASE_HEIGHT + 8) {
+    return regionNoise > 0.55 ? BlockType.DIRT : BlockType.STONE;
+  }
+  if (terrainHeight < BASE_HEIGHT - 6) return BlockType.SAND;
+  return BlockType.GRASS;
+}
+
+function blockForWorldY(worldY: number, terrainHeight: number, regionNoise: number): BlockType {
+  if (worldY < terrainHeight - 4) return BlockType.STONE;
+  if (worldY < terrainHeight - 1) return BlockType.DIRT;
+  if (worldY === terrainHeight - 1) return surfaceBlock(terrainHeight, regionNoise);
+  if (worldY <= WATER_LEVEL) return BlockType.WATER;
+  return BlockType.AIR;
+}
+
+function fillTerrainColumn(context: ColumnContext): void {
+  const { voxelData, x, z, chunkY, sizeX, sizeY, terrainHeight, regionNoise } = context;
+  for (let y = 0; y < sizeY; y++) {
+    const worldY = chunkY + y;
+    voxelData[voxelIndex(x, y, z, sizeX, sizeY)] = blockForWorldY(
+      worldY,
+      terrainHeight,
+      regionNoise,
+    );
+  }
+}
+
+function isTreeCandidate(worldX: number, worldZ: number, terrainHeight: number): boolean {
+  const isGrassySurface =
+    terrainHeight <= BASE_HEIGHT + 8 && terrainHeight >= BASE_HEIGHT - 6;
+  const onTreeGrid = worldX % 3 === 0 && worldZ % 3 === 0;
+  return isGrassySurface && onTreeGrid;
+}
+
+function treeShouldGrow(worldX: number, worldZ: number): boolean {
+  const forestDensity = fbm2D(
+    worldX * REGION_FREQUENCY * 1.5,
+    worldZ * REGION_FREQUENCY * 1.5,
+    2,
+    9001,
+  );
+  const plantHere = hashLattice(worldX, worldZ, 54321);
+  return plantHere < forestDensity * 0.5;
+}
+
+function writeTreeTrunk(
+  context: ColumnContext,
+  treeHeight: number,
+): void {
+  const { voxelData, x, z, chunkY, sizeX, sizeY, terrainHeight } = context;
+  for (let treeY = 0; treeY < treeHeight; treeY++) {
+    const worldY = terrainHeight + treeY;
+    if (worldY >= chunkY + sizeY) continue;
+
+    const index = voxelIndex(x, worldY - chunkY, z, sizeX, sizeY);
+    if (index >= 0 && index < voxelData.length) {
+      voxelData[index] = BlockType.WOOD_LOG;
+    }
+  }
+}
+
+function leafFitsChunk(
+  x: number,
+  z: number,
+  worldY: number,
+  chunkY: number,
+  sizeX: number,
+  sizeY: number,
+  sizeZ: number,
+): boolean {
+  return (
+    x >= 0 &&
+    x < sizeX &&
+    z >= 0 &&
+    z < sizeZ &&
+    worldY >= chunkY &&
+    worldY < chunkY + sizeY
+  );
+}
+
+function writeLeaf(
+  context: ColumnContext,
+  leafX: number,
+  leafY: number,
+  leafZ: number,
+  treeHeight: number,
+): void {
+  if (Math.abs(leafX) + Math.abs(leafY) + Math.abs(leafZ) > 3) return;
+
+  const { voxelData, x, z, chunkY, sizeX, sizeY, sizeZ, terrainHeight } = context;
+  const worldY = terrainHeight + treeHeight + leafY;
+  const localX = x + leafX;
+  const localZ = z + leafZ;
+  if (!leafFitsChunk(localX, localZ, worldY, chunkY, sizeX, sizeY, sizeZ)) return;
+
+  const index = voxelIndex(localX, worldY - chunkY, localZ, sizeX, sizeY);
+  if (index >= 0 && index < voxelData.length && voxelData[index] === BlockType.AIR) {
+    voxelData[index] = BlockType.LEAF;
+  }
+}
+
+function writeTreeCanopy(context: ColumnContext, treeHeight: number): void {
+  for (let leafY = -2; leafY <= 2; leafY++) {
+    for (let leafX = -2; leafX <= 2; leafX++) {
+      for (let leafZ = -2; leafZ <= 2; leafZ++) {
+        writeLeaf(context, leafX, leafY, leafZ, treeHeight);
+      }
+    }
+  }
+}
+
+function maybePlantTree(context: ColumnContext, worldX: number, worldZ: number): void {
+  if (!isTreeCandidate(worldX, worldZ, context.terrainHeight)) return;
+  if (!treeShouldGrow(worldX, worldZ)) return;
+
+  const treeHeight = 4 + Math.floor(hashLattice(worldX, worldZ, 98765) * 3);
+  writeTreeTrunk(context, treeHeight);
+  writeTreeCanopy(context, treeHeight);
+}
+
+function buildColumnContext(
+  voxelData: Uint8Array,
+  x: number,
+  z: number,
+  chunkY: number,
+  sizeX: number,
+  sizeY: number,
+  sizeZ: number,
+  worldX: number,
+  worldZ: number,
+): ColumnContext {
+  const heightNoise = fbm2D(
+    worldX * TERRAIN_FREQUENCY,
+    worldZ * TERRAIN_FREQUENCY,
+    4,
+    1,
+  );
+  const terrainHeight = Math.round(
+    BASE_HEIGHT + (heightNoise * 2 - 1) * HEIGHT_VARIATION,
+  );
+  const regionNoise = fbm2D(
+    worldX * REGION_FREQUENCY,
+    worldZ * REGION_FREQUENCY,
+    2,
+    4242,
+  );
+
+  return {
+    voxelData,
+    x,
+    z,
+    chunkY,
+    sizeX,
+    sizeY,
+    sizeZ,
+    terrainHeight,
+    regionNoise,
+  };
+}
+
 export function generateChunkTerrain(
   chunkX: number,
   chunkY: number,
@@ -76,104 +259,24 @@ export function generateChunkTerrain(
 ): Uint8Array {
   const voxelData = new Uint8Array(sizeX * sizeY * sizeZ);
 
-  const baseHeight = 64;
-  const heightVariation = 14;
-  // Any column whose ground sits at or below this height floods up to it,
-  // forming lakes/ponds in low-lying terrain — matches the existing sand
-  // threshold below, so beaches form naturally at the water's edge instead
-  // of needing a separate rule.
-  const waterLevel = baseHeight - 6;
-  // One full hill cycle spans roughly 1/frequency blocks — tuned for gentle
-  // rolling terrain rather than a hill (or a chaotic jump) every block.
-  const terrainFrequency = 1 / 48;
-  // A second, much lower-frequency field selects broad regions (forest vs.
-  // open field, sandy vs. grassy) — large coherent patches instead of a
-  // block-by-block flicker between surface types.
-  const regionFrequency = 1 / 96;
-
   for (let x = 0; x < sizeX; x++) {
     for (let z = 0; z < sizeZ; z++) {
       const worldX = chunkX + x;
       const worldZ = chunkZ + z;
+      const context = buildColumnContext(
+        voxelData,
+        x,
+        z,
+        chunkY,
+        sizeX,
+        sizeY,
+        sizeZ,
+        worldX,
+        worldZ,
+      );
 
-      const heightNoise = fbm2D(worldX * terrainFrequency, worldZ * terrainFrequency, 4, 1);
-      const terrainHeight = Math.round(baseHeight + (heightNoise * 2 - 1) * heightVariation);
-
-      const regionNoise = fbm2D(worldX * regionFrequency, worldZ * regionFrequency, 2, 4242);
-
-      for (let y = 0; y < sizeY; y++) {
-        const worldY = chunkY + y;
-        const voxelIndex = x + y * sizeX + z * sizeX * sizeY;
-
-        if (worldY < terrainHeight - 4) {
-          voxelData[voxelIndex] = BlockType.STONE;
-        } else if (worldY < terrainHeight - 1) {
-          voxelData[voxelIndex] = BlockType.DIRT;
-        } else if (worldY === terrainHeight - 1) {
-          if (terrainHeight > baseHeight + 8) {
-            // Mountainous — bare stone, with dirt only where the smooth
-            // region field says the slope is gentle enough to hold soil.
-            voxelData[voxelIndex] = regionNoise > 0.55 ? BlockType.DIRT : BlockType.STONE;
-          } else if (terrainHeight < baseHeight - 6) {
-            voxelData[voxelIndex] = BlockType.SAND;
-          } else {
-            voxelData[voxelIndex] = BlockType.GRASS;
-          }
-        } else if (worldY <= waterLevel) {
-          voxelData[voxelIndex] = BlockType.WATER;
-        } else {
-          voxelData[voxelIndex] = BlockType.AIR;
-        }
-      }
-
-      // Forest density is its own smooth, low-frequency field, so trees
-      // cluster into natural-looking patches with open ground between them
-      // instead of being scattered uniformly at random. Only grassy,
-      // roughly-flat ground grows trees. Checking on a coarser 3-block grid
-      // (rather than every column) keeps canopies from overlapping.
-      const isGrassySurface = terrainHeight <= baseHeight + 8 && terrainHeight >= baseHeight - 6;
-      const onTreeGrid = worldX % 3 === 0 && worldZ % 3 === 0;
-      if (isGrassySurface && onTreeGrid) {
-        const forestDensity = fbm2D(worldX * regionFrequency * 1.5, worldZ * regionFrequency * 1.5, 2, 9001);
-        const plantHere = hashLattice(worldX, worldZ, 54321);
-        // Higher forest density lowers the bar for a tree to spawn here,
-        // so dense regions read as forest and sparse regions as open field.
-        if (plantHere < forestDensity * 0.5) {
-          const treeHeight = 4 + Math.floor(hashLattice(worldX, worldZ, 98765) * 3);
-          for (let treeY = 0; treeY < treeHeight; treeY++) {
-            const y = terrainHeight + treeY;
-            if (y < chunkY + sizeY) {
-              const voxelIndex = x + (y - chunkY) * sizeX + z * sizeX * sizeY;
-              if (voxelIndex >= 0 && voxelIndex < voxelData.length) {
-                voxelData[voxelIndex] = BlockType.WOOD_LOG;
-              }
-            }
-          }
-
-          for (let leafY = -2; leafY <= 2; leafY++) {
-            for (let leafX = -2; leafX <= 2; leafX++) {
-              for (let leafZ = -2; leafZ <= 2; leafZ++) {
-                if (Math.abs(leafX) + Math.abs(leafY) + Math.abs(leafZ) <= 3) {
-                  const y = terrainHeight + treeHeight + leafY;
-                  const leafWorldX = x + leafX;
-                  const leafWorldZ = z + leafZ;
-
-                  if (
-                    leafWorldX >= 0 && leafWorldX < sizeX &&
-                    leafWorldZ >= 0 && leafWorldZ < sizeZ &&
-                    y >= chunkY && y < chunkY + sizeY
-                  ) {
-                    const voxelIndex = leafWorldX + (y - chunkY) * sizeX + leafWorldZ * sizeX * sizeY;
-                    if (voxelIndex >= 0 && voxelIndex < voxelData.length && voxelData[voxelIndex] === BlockType.AIR) {
-                      voxelData[voxelIndex] = BlockType.LEAF;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      fillTerrainColumn(context);
+      maybePlantTree(context, worldX, worldZ);
     }
   }
 
