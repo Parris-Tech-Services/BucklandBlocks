@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { BlockType } from "../../engine/blocks";
 import * as THREE from "three";
+import { readSave } from "../../engine/save";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -60,27 +61,22 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   return [inventory, counts];
 };
 
-const loadSavedGame = () => {
-  try {
-    const savedData = localStorage.getItem('buckland_blocks_save');
-    if (savedData) {
-      return JSON.parse(savedData);
-    }
-  } catch (error) {
-    console.error('Failed to load saved game:', error);
-  }
-  return null;
-};
+// A failed read remains visible and never deletes the original save.
+export const initialSave = typeof window === 'undefined'
+  ? { data: null, error: null }
+  : (() => { try { return readSave(window.localStorage); } catch {
+      return { data: null, error: 'Browser storage is unavailable. Saving is disabled.' };
+    } })();
 
 export const useGame = create<GameState>()(
   subscribeWithSelector((set, get) => {
-    const savedGame = loadSavedGame();
+    const savedGame = initialSave.data;
     const [initialInventory, initialCounts] = initializeInventory();
     
-    const initialChunks = new Map();
+    const initialChunks = new Map<string, ChunkData>();
     if (savedGame?.chunks) {
-      savedGame.chunks.forEach((chunk: any) => {
-        initialChunks.set(chunk.key, {
+      savedGame.chunks.forEach((chunk) => {
+        initialChunks.set(`${chunk.x},${chunk.z}`, {
           voxelData: new Uint8Array(chunk.voxelData),
           dirty: false,
         });
@@ -97,9 +93,9 @@ export const useGame = create<GameState>()(
       playerRotation: savedGame?.playerRotation || { x: 0, y: 0 },
       
       // Initial inventory (9 hotbar + 27 main = 36 total)
-      inventory: savedGame?.inventory || initialInventory,
-      inventoryCounts: savedGame?.inventoryCounts || initialCounts,
-      selectedSlot: savedGame?.selectedSlot || 0,
+      inventory: savedGame?.inventory?.slots || initialInventory,
+      inventoryCounts: savedGame?.inventory?.counts || initialCounts,
+      selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state
       chunks: initialChunks,
@@ -200,19 +196,13 @@ export const useGame = create<GameState>()(
       if (chunk) {
         const localX = x - chunkX * chunkSize;
         const localZ = z - chunkZ * chunkSize;
-      const localY = y;
-
-      if (localX < 0 || localX >= chunkSize || localY < 0 || localY >= 128 || localZ < 0 || localZ >= chunkSize) {
-        return;
-      }
-
-      const index = localX + localY * chunkSize + localZ * chunkSize * 128;
-      const voxelData = new Uint8Array(chunk.voxelData);
-      voxelData[index] = blockType;
-
-      const chunks = new Map(state.chunks);
-      chunks.set(chunkKey, { voxelData, dirty: true });
-      set({ chunks });
+        const localY = y;
+        
+        const index = localX + localY * chunkSize + localZ * chunkSize * 128;
+        chunk.voxelData[index] = blockType;
+        chunk.dirty = true;
+        
+        set({ chunks: new Map(state.chunks) });
       }
     },
     
@@ -228,11 +218,7 @@ export const useGame = create<GameState>()(
       if (chunk) {
         const localX = x - chunkX * chunkSize;
         const localZ = z - chunkZ * chunkSize;
-      const localY = y;
-
-      if (localX < 0 || localX >= chunkSize || localY < 0 || localY >= 128 || localZ < 0 || localZ >= chunkSize) {
-        return BlockType.AIR;
-      }
+        const localY = y;
         
         const index = localX + localY * chunkSize + localZ * chunkSize * 128;
         return chunk.voxelData[index] || BlockType.AIR;
