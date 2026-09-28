@@ -12,6 +12,9 @@ export const FEATURE_DEFAULTS = {
   // and passed a full end-to-end check on a deployed preview. Kill switch:
   // ?features=-inventorypanels shows the previous inventory screen.
   inventorypanels: true,
+  // Item pictures in inventory/crafting slots, with a name fallback when a
+  // texture fails to load (PR #28).
+  itemicons: false,
 } satisfies Record<string, boolean>;
 
 export type Feature = keyof typeof FEATURE_DEFAULTS;
