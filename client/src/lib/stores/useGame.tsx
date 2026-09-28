@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
+import { createWorldSeed, normalizeWorldSeed } from "../../engine/worldSeed";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -61,6 +62,7 @@ interface GameState {
   // World
   chunks: Map<string, ChunkData>;
   gameTime: number;
+  worldSeed: number;
   // FPS
   fps: number;
   setFps: (v: number) => void;
@@ -155,6 +157,9 @@ export const useGame = create<GameState>()(
   subscribeWithSelector((set, get) => {
     const savedGame = initialSave.data;
     const [initialInventory, initialCounts] = initializeInventory();
+    const worldSeed = normalizeWorldSeed(
+      savedGame ? savedGame.worldSeed ?? 0 : createWorldSeed(),
+    );
     const [loadedInventory, loadedInventoryCounts] = ensureStarterTools(
       savedGame?.inventory?.slots,
       savedGame?.inventory?.counts,
@@ -206,6 +211,7 @@ export const useGame = create<GameState>()(
       // Initial world state
       chunks: initialChunks,
       gameTime: savedGame?.gameTime || 0,
+      worldSeed,
       
   fps: 0,
   setFps: (v: number) => set({ fps: v }),

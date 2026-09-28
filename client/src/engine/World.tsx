@@ -24,6 +24,7 @@ const World: React.FC = () => {
   // per-frame store writes like fps/playerPosition.
   const setChunk = useGame((s) => s.setChunk);
   const getChunk = useGame((s) => s.getChunk);
+  const worldSeed = useGame((s) => s.worldSeed);
   const [renderedChunks, setRenderedChunks] = useState<Set<string>>(new Set());
   const lightsAdded = useRef(false);
 
@@ -105,6 +106,7 @@ const World: React.FC = () => {
           CHUNK_SIZE.x,
           CHUNK_SIZE.y,
           CHUNK_SIZE.z,
+          worldSeed,
         );
         if (osmData) {
           chunkData = processOSMData(
@@ -135,6 +137,7 @@ const World: React.FC = () => {
     osmData,
     getChunk,
     setChunk,
+    worldSeed,
   ]);
 
   if (isLoading) {

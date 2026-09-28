@@ -45,6 +45,7 @@ function createSave(x = 4): WorldSave {
   counts[0] = 12;
 
   return {
+    worldSeed: 12345,
     chunks: [],
     inventory: {
       slots,
@@ -70,7 +71,21 @@ test("writeSave/readSave round-trip representative persistent state", () => {
   assert.deepEqual(result.data?.playerRotation, save.playerRotation);
   assert.deepEqual(result.data?.inventory, save.inventory);
   assert.equal(result.data?.gameTime, save.gameTime);
+  assert.equal(result.data?.worldSeed, save.worldSeed);
   assert.deepEqual(result.data?.chunks, save.chunks);
+});
+
+test("version 1 saves without a seed remain readable for migration", () => {
+  const storage = new MemoryStorage() as unknown as Storage;
+  const save = createSave();
+  const { worldSeed: _legacySeed, ...legacySave } = save;
+  const raw = JSON.stringify({ ...legacySave, version: 1, timestamp: Date.now(), chunks: [] });
+  storage.setItem(SAVE_KEY, raw);
+
+  const result = readSave(storage);
+
+  assert.equal(result.error, null);
+  assert.equal(result.data?.worldSeed, undefined);
 });
 
 test("a valid previous save is backed up before replacement", () => {
