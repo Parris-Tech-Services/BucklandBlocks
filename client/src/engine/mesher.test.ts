@@ -75,3 +75,24 @@ test('water renders a face where it meets open air, and the ground renders a fac
   // different-type transparent/solid boundaries still render.
   assert.ok(geo.getIndex()!.count > 0, 'expected the dirt/water/air boundaries to produce visible faces');
 });
+
+
+test('crafting table uses its dedicated material group instead of dirt', () => {
+  const size = { x: 1, y: 1, z: 1 };
+  const voxels = makeChunk(size.x, size.y, size.z, () => BlockType.CRAFTING_TABLE);
+  const geo = createBlockMesh(voxels, size);
+
+  assert.equal(geo.groups.length, 1);
+  assert.equal(geo.groups[0].materialIndex, 7);
+});
+
+test('chest and furnace use dedicated material groups', () => {
+  const size = { x: 2, y: 1, z: 1 };
+  const voxels = makeChunk(size.x, size.y, size.z, (x) =>
+    x === 0 ? BlockType.CHEST : BlockType.FURNACE
+  );
+  const geo = createBlockMesh(voxels, size);
+
+  const materialIndices = geo.groups.map((group) => group.materialIndex).sort();
+  assert.deepEqual(materialIndices, [8, 9]);
+});
