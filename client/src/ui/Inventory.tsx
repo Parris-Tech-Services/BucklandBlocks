@@ -1,260 +1,139 @@
-import React, { useEffect, useState } from 'react';
-import { X, Package, Box } from 'lucide-react';
-import { BlockType, getBlockData, BLOCKS } from '../engine/blocks';
-import { useGame } from '../lib/stores/useGame';
+import React, { useEffect, useMemo } from "react";
+import { X } from "lucide-react";
+import { BlockType, getBlockData } from "../engine/blocks";
+import { useGame } from "../lib/stores/useGame";
+import recipesData from "../data/recipes.json";
 
-interface InventoryProps {
-  onClose: () => void;
+interface InventoryProps { onClose: () => void; }
+interface Recipe {
+  id: string;
+  result: { type: BlockType; count: number };
+  pattern: string[];
+  legend: Record<string, BlockType>;
 }
 
+const recipes = recipesData as unknown as Recipe[];
+const armorSlots = ["helmet", "chestplate", "leggings", "boots"] as const;
+const armorNames = ["Helmet", "Chestplate", "Leggings", "Boots"];
+const creativeArmor = [BlockType.LEATHER_HELMET, BlockType.LEATHER_CHESTPLATE, BlockType.LEATHER_LEGGINGS, BlockType.LEATHER_BOOTS];
+
 const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
-  const [tab, setTab] = useState<'survival' | 'creative'>('survival');
-  const { 
-    inventory, inventoryCounts, selectedSlot, setSelectedSlot,
-    cursorItem, setCursorItem, armor
-  } = useGame();
+  const { inventory, inventoryCounts, selectedSlot, cursorItem, setCursorItem, armor, craftingGrid, craftingCounts } = useGame();
 
-  
-  
-  
-  const handleCreativeClick = (e: React.MouseEvent, type: BlockType) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const data = getBlockData(type);
-    if (!data) return;
-    
-    useGame.setState({ cursorItem: { type, count: data.maxStack } });
-  };
-
-  const handleSort = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const state = useGame.getState();
-    const newInventory = [...state.inventory];
-    const newCounts = [...state.inventoryCounts];
-    
-    // Sort main inventory (slots 9 to 35)
-    // 1. Group identical items
-    for (let i = 9; i < 36; i++) {
-      if (newInventory[i] === null) continue;
-      const maxStack = getBlockData(newInventory[i])?.maxStack ?? 64;
-      for (let j = i + 1; j < 36; j++) {
-        if (newInventory[j] === newInventory[i]) {
-          const space = maxStack - newCounts[i];
-          const toMove = Math.min(space, newCounts[j]);
-          if (toMove > 0) {
-            newCounts[i] += toMove;
-            newCounts[j] -= toMove;
-            if (newCounts[j] === 0) newInventory[j] = null;
-          }
-        }
+  const craftResult = useMemo(() => {
+    let minRow = 2, maxRow = -1, minCol = 2, maxCol = -1;
+    for (let row = 0; row < 2; row++) for (let col = 0; col < 2; col++) {
+      if (craftingGrid[row * 2 + col] !== null) {
+        minRow = Math.min(minRow, row); maxRow = Math.max(maxRow, row);
+        minCol = Math.min(minCol, col); maxCol = Math.max(maxCol, col);
       }
     }
-    
-    // 2. Extract and sort non-empty slots by ID
-    const items = [];
-    for (let i = 9; i < 36; i++) {
-      if (newInventory[i] !== null) {
-        items.push({ type: newInventory[i], count: newCounts[i] });
-        newInventory[i] = null;
-        newCounts[i] = 0;
+    if (maxRow < 0) return null;
+    const height = maxRow - minRow + 1;
+    const width = maxCol - minCol + 1;
+    return recipes.find((recipe) => {
+      if (recipe.pattern.length !== height || Math.max(...recipe.pattern.map((row) => row.length)) !== width) return false;
+      for (let row = 0; row < height; row++) for (let col = 0; col < width; col++) {
+        const char = recipe.pattern[row][col] || " ";
+        const expected = char === " " ? null : recipe.legend[char];
+        if (craftingGrid[(minRow + row) * 2 + minCol + col] !== expected) return false;
       }
-    }
-    items.sort((a, b) => a.type - b.type);
-    
-    // 3. Place them back
-    for (let i = 0; i < items.length; i++) {
-      newInventory[9 + i] = items[i].type;
-      newCounts[9 + i] = items[i].count;
-    }
-    
-    useGame.setState({ inventory: newInventory, inventoryCounts: newCounts });
-  };
-
-  const handleDropOutside = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (cursorItem) {
-      // Just delete the item for now (dropping into the world requires entity physics)
-      setCursorItem(null);
-    }
-  };
-
-  const handleSlotClick = (e: React.MouseEvent, slotIndex: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // We update the state by mutating a copy and using useGame.setState
-    const state = useGame.getState();
-    const newInventory = [...state.inventory];
-    const newCounts = [...state.inventoryCounts];
-    let newCursor = state.cursorItem ? { ...state.cursorItem } : null;
-    
-    const slotType = newInventory[slotIndex];
-    const slotCount = newCounts[slotIndex];
-    
-    const rightClick = e.type === 'contextmenu' || e.button === 2;
-    
-    
-    const shiftClick = e.shiftKey;
-    
-    if (shiftClick && !newCursor && slotType !== null) {
-      // Quick move
-      const isHotbar = slotIndex < 9;
-      const startIdx = isHotbar ? 9 : 0;
-      const endIdx = isHotbar ? 36 : 9;
-      const maxStack = getBlockData(slotType)?.maxStack ?? 64;
-      
-      let remaining = slotCount;
-      // First try to merge
-      for (let i = startIdx; i < endIdx; i++) {
-        if (newInventory[i] === slotType && newCounts[i] < maxStack) {
-          const space = maxStack - newCounts[i];
-          const toMove = Math.min(space, remaining);
-          newCounts[i] += toMove;
-          remaining -= toMove;
-          if (remaining === 0) break;
-        }
-      }
-      // Then try empty slots
-      if (remaining > 0) {
-        for (let i = startIdx; i < endIdx; i++) {
-          if (newInventory[i] === null) {
-            newInventory[i] = slotType;
-            newCounts[i] = remaining;
-            remaining = 0;
-            break;
-          }
-        }
-      }
-      
-      if (remaining < slotCount) {
-        newCounts[slotIndex] = remaining;
-        if (remaining === 0) newInventory[slotIndex] = null;
-        useGame.setState({ inventory: newInventory, inventoryCounts: newCounts, cursorItem: newCursor });
-      }
-      return;
-    }
-    
-    if (newCursor) {
-      if (slotType === null) {
-        // Place into empty slot
-        const placeCount = rightClick ? 1 : newCursor.count;
-        newInventory[slotIndex] = newCursor.type;
-        newCounts[slotIndex] = placeCount;
-        newCursor.count -= placeCount;
-        if (newCursor.count <= 0) newCursor = null;
-      } else if (slotType === newCursor.type) {
-        // Merge
-        const maxStack = getBlockData(slotType)?.maxStack ?? 64;
-        const space = maxStack - slotCount;
-        if (space > 0) {
-          const placeCount = rightClick ? 1 : Math.min(newCursor.count, space);
-          newCounts[slotIndex] += placeCount;
-          newCursor.count -= placeCount;
-          if (newCursor.count <= 0) newCursor = null;
-        }
-      } else {
-        // Swap
-        if (!rightClick) {
-          const tempType = slotType;
-          const tempCount = slotCount;
-          newInventory[slotIndex] = newCursor.type;
-          newCounts[slotIndex] = newCursor.count;
-          newCursor = { type: tempType, count: tempCount };
-        }
-      }
-    } else {
-      if (slotType !== null) {
-        // Pick up
-        if (rightClick && slotCount > 1) {
-          const takeCount = Math.floor(slotCount / 2);
-          newCursor = { type: slotType, count: takeCount };
-          newCounts[slotIndex] -= takeCount;
-        } else {
-          newCursor = { type: slotType, count: slotCount };
-          newInventory[slotIndex] = null;
-          newCounts[slotIndex] = 0;
-        }
-      }
-    }
-    
-    useGame.setState({ inventory: newInventory, inventoryCounts: newCounts, cursorItem: newCursor });
-  };
+      return true;
+    }) ?? null;
+  }, [craftingGrid]);
 
   useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-    document.addEventListener('contextmenu', handleContextMenu);
-    return () => document.removeEventListener('contextmenu', handleContextMenu);
+    const preventContextMenu = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("contextmenu", preventContextMenu);
+    return () => document.removeEventListener("contextmenu", preventContextMenu);
   }, []);
 
-  const renderSlot = (slotIndex: number, isHotbar: boolean = false) => {
-    const blockType = inventory[slotIndex];
-    const count = inventoryCounts[slotIndex];
-    const isSelected = isHotbar && slotIndex === selectedSlot;
-    
-    return (
-      <div
-          key={slotIndex}
-          title={blockType !== null ? getBlockData(blockType)?.name : undefined}
-        className={`w-12 h-12 border-2 ${isSelected ? 'border-yellow-400' : 'border-gray-500'} bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600`}
-        onClick={(e) => handleSlotClick(e, slotIndex)}
-        onContextMenu={(e) => handleSlotClick(e, slotIndex)}
-      >
-        {blockType !== null && blockType !== BlockType.AIR && (
-          <>
-            <div className="text-white text-[8px] font-bold text-center">
-              {getBlockData(blockType)?.name.slice(0, 8) || 'Unknown'}
-            </div>
-            {count > 0 && (
-              <div className="text-white text-[10px] font-mono mt-1">{count}</div>
-            )}
-          </>
-        )}
-      </div>
-    );
+  const handleInventorySlot = (event: React.MouseEvent, slotIndex: number) => {
+    event.preventDefault(); event.stopPropagation();
+    const state = useGame.getState();
+    const slots = [...state.inventory]; const counts = [...state.inventoryCounts];
+    let nextCursor = state.cursorItem ? { ...state.cursorItem } : null;
+    const type = slots[slotIndex]; const count = counts[slotIndex];
+    const rightClick = event.button === 2 || event.type === "contextmenu";
+    if (nextCursor) {
+      if (type === null) {
+        const moved = rightClick ? 1 : nextCursor.count;
+        slots[slotIndex] = nextCursor.type; counts[slotIndex] = moved; nextCursor.count -= moved;
+      } else if (type === nextCursor.type) {
+        const space = (getBlockData(type)?.maxStack ?? 64) - count;
+        const moved = rightClick ? 1 : Math.min(space, nextCursor.count);
+        if (moved > 0) { counts[slotIndex] += moved; nextCursor.count -= moved; }
+      } else if (!rightClick) {
+        slots[slotIndex] = nextCursor.type; counts[slotIndex] = nextCursor.count; nextCursor = { type, count };
+      }
+      if (nextCursor && nextCursor.count <= 0) nextCursor = null;
+    } else if (type !== null) {
+      const moved = rightClick && count > 1 ? Math.ceil(count / 2) : count;
+      nextCursor = { type, count: moved }; counts[slotIndex] -= moved;
+      if (counts[slotIndex] <= 0) { slots[slotIndex] = null; counts[slotIndex] = 0; }
+    }
+    useGame.setState({ inventory: slots, inventoryCounts: counts, cursorItem: nextCursor });
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto">
-      <div className="bg-gray-800 border-2 border-gray-400 p-4 rounded-lg min-w-[400px]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-white text-lg font-bold">Inventory</h2>
-          <button onClick={onClose} className="text-white hover:text-gray-300">
-            <X size={20} />
-          </button>
-        </div>
+  const handleArmorSlot = (event: React.MouseEvent, armorIndex: number) => {
+    event.preventDefault(); event.stopPropagation();
+    const state = useGame.getState(); const nextArmor = [...state.armor];
+    const equipped = nextArmor[armorIndex]; let nextCursor = state.cursorItem ? { ...state.cursorItem } : null;
+    const rightClick = event.button === 2 || event.type === "contextmenu";
+    const accepts = (type: BlockType | null) => type !== null && getBlockData(type)?.armorSlot === armorSlots[armorIndex];
+    if (nextCursor) {
+      if (!accepts(nextCursor.type)) return;
+      if (equipped !== null && !rightClick) nextCursor = { type: equipped, count: 1 };
+      else if (equipped !== null) return;
+      nextArmor[armorIndex] = state.cursorItem!.type; nextCursor = equipped !== null ? { type: equipped, count: 1 } : null;
+    } else if (equipped !== null) {
+      nextCursor = { type: equipped, count: 1 }; nextArmor[armorIndex] = null;
+    }
+    useGame.setState({ armor: nextArmor, cursorItem: nextCursor });
+  };
 
-        <div className="mb-4">
-          <div className="grid grid-cols-9 gap-1 mb-2">
-            {Array.from({ length: 27 }, (_, i) => renderSlot(i + 9))}
-          </div>
-        </div>
+  const handleCraftingSlot = (event: React.MouseEvent, slotIndex: number) => {
+    event.preventDefault(); event.stopPropagation();
+    const state = useGame.getState(); const grid = [...state.craftingGrid]; const counts = [...state.craftingCounts];
+    let nextCursor = state.cursorItem ? { ...state.cursorItem } : null;
+    const type = grid[slotIndex]; const count = counts[slotIndex]; const rightClick = event.button === 2 || event.type === "contextmenu";
+    if (nextCursor) {
+      if (type === null) { const moved = rightClick ? 1 : nextCursor.count; grid[slotIndex] = nextCursor.type; counts[slotIndex] = moved; nextCursor.count -= moved; }
+      else if (type === nextCursor.type) { const space = (getBlockData(type)?.maxStack ?? 64) - count; const moved = rightClick ? 1 : Math.min(space, nextCursor.count); if (moved > 0) { counts[slotIndex] += moved; nextCursor.count -= moved; } }
+      else if (!rightClick) { grid[slotIndex] = nextCursor.type; counts[slotIndex] = nextCursor.count; nextCursor = { type, count }; }
+      if (nextCursor && nextCursor.count <= 0) nextCursor = null;
+    } else if (type !== null) { const moved = rightClick && count > 1 ? Math.ceil(count / 2) : count; nextCursor = { type, count: moved }; counts[slotIndex] -= moved; if (counts[slotIndex] <= 0) { grid[slotIndex] = null; counts[slotIndex] = 0; } }
+    useGame.setState({ craftingGrid: grid, craftingCounts: counts, cursorItem: nextCursor });
+  };
 
-        <div className="border-t border-gray-600 pt-2 mb-4">
-          <div className="grid grid-cols-9 gap-1">
-            {Array.from({ length: 9 }, (_, i) => renderSlot(i, true))}
-          </div>
-        </div>
+  const takeCraftResult = () => {
+    if (!craftResult) return;
+    const state = useGame.getState();
+    if (state.cursorItem && state.cursorItem.type !== craftResult.result.type) return;
+    if (state.cursorItem && state.cursorItem.count + craftResult.result.count > (getBlockData(craftResult.result.type)?.maxStack ?? 64)) return;
+    const grid = [...state.craftingGrid]; const counts = [...state.craftingCounts];
+    for (let i = 0; i < grid.length; i++) if (grid[i] !== null) { counts[i]--; if (counts[i] <= 0) { counts[i] = 0; grid[i] = null; } }
+    const nextCursor = state.cursorItem ? { ...state.cursorItem, count: state.cursorItem.count + craftResult.result.count } : { type: craftResult.result.type, count: craftResult.result.count };
+    useGame.setState({ craftingGrid: grid, craftingCounts: counts, cursorItem: nextCursor });
+  };
 
-        {cursorItem && (
-          <div className="fixed pointer-events-none z-[100]" style={{ left: '50%', top: '10%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-12 h-12 border-2 border-white bg-gray-700 flex flex-col items-center justify-center opacity-80">
-              <div className="text-white text-[8px] font-bold text-center">
-                {getBlockData(cursorItem.type)?.name.slice(0, 8) || 'Unknown'}
-              </div>
-              <div className="text-white text-[10px] font-mono mt-1">{cursorItem.count}</div>
-            </div>
-          </div>
-        )}
+  const renderItem = (type: BlockType | null, count = 0) => type === null ? null : <><img src={getBlockData(type)?.texture} alt="" className="h-full w-full object-cover p-1 pixelated" />{count > 1 && <span className="absolute bottom-0 right-1 text-xs font-bold text-white" style={{ textShadow: "1px 1px 0 #000" }}>{count}</span>}</>;
+  const renderSlot = (slotIndex: number, isHotbar = false) => <div key={slotIndex} title={inventory[slotIndex] !== null ? getBlockData(inventory[slotIndex])?.name : "Empty"} className={`relative h-12 w-12 cursor-pointer border-2 ${isHotbar && slotIndex === selectedSlot ? "border-yellow-400" : "border-gray-500"} bg-gray-700 hover:bg-gray-600`} onClick={(event) => handleInventorySlot(event, slotIndex)} onContextMenu={(event) => handleInventorySlot(event, slotIndex)}>{renderItem(inventory[slotIndex], inventoryCounts[slotIndex])}</div>;
+  const renderCraftSlot = (slotIndex: number) => <div key={slotIndex} className="relative h-12 w-12 cursor-pointer border-2 border-gray-500 bg-gray-700 hover:bg-gray-600" onClick={(event) => handleCraftingSlot(event, slotIndex)} onContextMenu={(event) => handleCraftingSlot(event, slotIndex)}>{renderItem(craftingGrid[slotIndex], craftingCounts[slotIndex])}</div>;
 
-        <div className="mt-4 text-center text-gray-400 text-xs">
-          Left Click: Move Stack | Right Click: Split/Place One<br/>
-          Press E or ESC to close
-        </div>
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 pointer-events-auto" onClick={() => cursorItem && setCursorItem(null)}>
+    <div className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-lg border-2 border-gray-400 bg-gray-800 p-4 text-white shadow-2xl" onClick={(event) => event.stopPropagation()} onContextMenu={(event) => event.preventDefault()}>
+      <div className="mb-3 flex items-center justify-between border-b border-gray-600 pb-2"><div><h2 className="text-xl font-bold">Inventory</h2><p className="text-xs text-gray-400">E: close · Right-click: split or place one</p></div><button type="button" onClick={onClose} className="text-gray-300 hover:text-white" aria-label="Close inventory"><X size={22} /></button></div>
+      <div className="mb-4 grid grid-cols-[minmax(150px,1fr)_minmax(220px,1.5fr)] gap-5 rounded border border-gray-600 bg-gray-900/40 p-4">
+        <div className="flex flex-col items-center justify-center gap-2"><div className="text-xs uppercase tracking-widest text-gray-400">Player</div><div className="relative flex h-32 w-24 items-center justify-center rounded border border-gray-600 bg-gradient-to-b from-sky-900/60 to-gray-900"><div className="h-12 w-10 rounded-t-full bg-orange-200" /><div className="absolute top-14 h-16 w-16 rounded bg-blue-700" /><div className="absolute top-[4.5rem] h-16 w-5 -translate-x-6 rounded bg-blue-900" /><div className="absolute top-[4.5rem] h-16 w-5 translate-x-6 rounded bg-blue-900" /></div></div>
+        <div className="flex items-center justify-center gap-4"><div className="grid gap-1">{armor.map((type, index) => <div key={armorSlots[index]} title={`Armor: ${armorNames[index]}`} onClick={(event) => handleArmorSlot(event, index)} onContextMenu={(event) => handleArmorSlot(event, index)} className="relative flex h-12 w-12 cursor-pointer items-center justify-center border-2 border-gray-500 bg-gray-700 text-[9px] text-gray-400 hover:bg-gray-600">{renderItem(type, 1)}{type === null && armorNames[index]}</div>)}</div><div className="text-3xl text-gray-500">+</div><div className="flex items-center gap-2"><div className="grid grid-cols-2 gap-1">{[0, 1, 2, 3].map(renderCraftSlot)}</div><span className="text-3xl text-gray-500">→</span><div onClick={takeCraftResult} className="relative h-14 w-14 cursor-pointer border-2 border-yellow-500 bg-gray-700 hover:bg-gray-600">{craftResult && renderItem(craftResult.result.type, craftResult.result.count)}</div></div></div>
       </div>
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">Inventory</div><div className="mb-4 grid grid-cols-9 gap-1">{Array.from({ length: 27 }, (_, i) => renderSlot(i + 9))}</div>
+      <div className="mb-4 border-t border-gray-600 pt-3"><div className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">Hotbar</div><div className="grid grid-cols-9 gap-1">{Array.from({ length: 9 }, (_, i) => renderSlot(i, true))}</div></div>
+      <details className="rounded border border-gray-700 bg-gray-900/40 p-2 text-xs"><summary className="cursor-pointer font-bold text-gray-300">Creative test items</summary><div className="mt-2 flex flex-wrap gap-2">{creativeArmor.map((type) => <button type="button" key={type} onClick={() => setCursorItem({ type, count: getBlockData(type)?.maxStack ?? 1 })} className="rounded border border-gray-600 bg-gray-700 px-2 py-1 hover:bg-gray-600">Give {getBlockData(type)?.name}</button>)}</div></details>
+      {cursorItem && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded border-2 border-white bg-gray-700 p-1 text-xs">Holding: {getBlockData(cursorItem.type)?.name} × {cursorItem.count}</div>}
     </div>
-  );
+  </div>;
 };
 
 export default Inventory;

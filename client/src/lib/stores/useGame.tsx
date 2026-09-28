@@ -71,7 +71,7 @@ interface GameState {
   setPlayerRotation: (rotation: { x: number; y: number }) => void;
   // Inventory actions
   setSelectedSlot: (slot: number) => void;
-  addToInventory: (blockType: BlockType, count?: number) => void;
+  addToInventory: (blockType: BlockType, count?: number) => number;
   removeFromInventory: (slot: number, count?: number) => void;
   // World actions
   setBlock: (x: number, y: number, z: number, blockType: BlockType) => void;
@@ -175,7 +175,7 @@ export const useGame = create<GameState>()(
       cursorItem: null,
       setCursorItem: (item) => set({ cursorItem: item }),
       armor: savedGame?.armor || new Array(4).fill(null),
-      droppedItems: savedGame?.droppedItems || [],
+      droppedItems: savedGame?.droppedItems?.map((item) => ({ ...item, position: new THREE.Vector3(item.position.x, item.position.y, item.position.z) })) || [],
       blockEntities: savedGame?.blockEntities || {},
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       

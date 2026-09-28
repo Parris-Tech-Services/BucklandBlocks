@@ -23,6 +23,11 @@ function Game() {
   const setMenu = useSession((state) => state.setMenu);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
+  const closeMenu = () => {
+    useSession.setState({ menu: null, currentEntityId: undefined, error: null });
+    const cvs = document.querySelector("canvas");
+    try { cvs?.requestPointerLock(); } catch {}
+  };
 
   useEffect(() => {
     const clear = () => gameInput.clear();
@@ -235,48 +240,16 @@ function Game() {
       <GameHUD />
 
       <div hidden={menu !== "inventory"}>
-        <Inventory onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <Inventory onClose={closeMenu} />
       </div>
       <div hidden={menu !== "crafting"}>
-        <Crafting onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <Crafting onClose={closeMenu} />
       </div>
       <div hidden={menu !== "crafting_table"}>
-        <CraftingTable onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <CraftingTable onClose={closeMenu} />
       </div>
       <div hidden={menu !== "furnace"}>
-        <FurnaceUI onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <FurnaceUI onClose={closeMenu} />
       </div>
 
       {menu === "pause" && (

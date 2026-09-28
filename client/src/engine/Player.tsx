@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { gameInput } from "./input";
@@ -121,6 +120,7 @@ const Player: React.FC = () => {
     getChunk,
     markChunkDirty,
     damagePlayer,
+    setBlockEntity,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -427,6 +427,9 @@ const Player: React.FC = () => {
       drops.forEach((drop) => {
         addToInventory(drop.id, drop.count);
       });
+      if (blockType === BlockType.CRAFTING_TABLE || blockType === BlockType.FURNACE) {
+        setBlockEntity(`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`, null);
+      }
     }
 
     if (
@@ -434,6 +437,16 @@ const Player: React.FC = () => {
       raycast &&
       now - lastActionRef.current > 200
     ) {
+      const targetId = `${raycast.position.x},${raycast.position.y},${raycast.position.z}`;
+      if (raycast.blockType === BlockType.CRAFTING_TABLE || raycast.blockType === BlockType.FURNACE) {
+        lastActionRef.current = now;
+        useSession.setState({
+          menu: raycast.blockType === BlockType.CRAFTING_TABLE ? "crafting_table" : "furnace",
+          currentEntityId: targetId,
+        });
+        return;
+      }
+
       const selectedBlockType = inventory[selectedSlot];
 
       if (
@@ -490,6 +503,16 @@ const Player: React.FC = () => {
           const chunkX = Math.floor(Math.floor(x) / 16);
           const chunkZ = Math.floor(Math.floor(z) / 16);
           markChunkDirty(chunkX, chunkZ);
+
+          if (selectedBlockType === BlockType.CRAFTING_TABLE || selectedBlockType === BlockType.FURNACE) {
+            setBlockEntity(`${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`, {
+              id: `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`,
+              type: selectedBlockType,
+              inventory: [null, null, null],
+              counts: [0, 0, 0],
+              progress: 0,
+            });
+          }
 
           removeFromInventory(selectedSlot, 1);
         }

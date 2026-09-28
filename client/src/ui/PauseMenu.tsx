@@ -10,6 +10,9 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
       writeSave({ playerPosition: { ...state.playerPosition }, playerRotation: state.playerRotation,
         inventory: { slots: state.inventory, counts: state.inventoryCounts, selectedSlot: state.selectedSlot },
         gameTime: state.gameTime,
+        armor: state.armor,
+        droppedItems: state.droppedItems.map((item) => ({ ...item, position: { x: item.position.x, y: item.position.y, z: item.position.z } })),
+        blockEntities: state.blockEntities,
         chunks: Array.from(state.chunks, ([key, chunk]) => {
           const [x, z] = key.split(',').map(Number);
           return { x, z, voxelData: chunk.voxelData, timestamp: Date.now() };

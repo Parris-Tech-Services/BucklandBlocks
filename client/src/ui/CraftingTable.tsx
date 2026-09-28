@@ -15,7 +15,7 @@ interface Recipe {
   legend: Record<string, BlockType>;
 }
 
-const recipes = recipesData as Recipe[];
+const recipes = recipesData as unknown as Recipe[];
 
 const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
   const { 
