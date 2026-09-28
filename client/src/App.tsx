@@ -83,6 +83,18 @@ function Game() {
       } else if (event.code === "F1") {
         event.preventDefault();
         useSession.getState().toggleHud();
+      } else if (
+        (event.code === "Equal" || event.code === "NumpadAdd") &&
+        isGameplayActive()
+      ) {
+        event.preventDefault();
+        useSession.getState().changeViewDistance(1);
+      } else if (
+        (event.code === "Minus" || event.code === "NumpadSubtract") &&
+        isGameplayActive()
+      ) {
+        event.preventDefault();
+        useSession.getState().changeViewDistance(-1);
       }
     };
 
