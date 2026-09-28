@@ -22,7 +22,7 @@ const WORLD_HEIGHT = 128;
 const DEFAULT_GROUND_Y = 64;
 
 
-const Hand: React.FC<{ isMining: boolean; miningProgress: number }> = ({ isMining, miningProgress }) => {
+const Hand: React.FC<{ miningProgressRef: React.MutableRefObject<number> }> = ({ miningProgressRef }) => {
   const { camera } = useThree();
   const { inventory, selectedSlot } = useGame();
   const handRef = useRef<THREE.Group>(null);
@@ -33,11 +33,9 @@ const Hand: React.FC<{ isMining: boolean; miningProgress: number }> = ({ isMinin
   useFrame((state) => {
     if (!handRef.current) return;
     const time = state.clock.getElapsedTime();
-    const velocity = useGame.getState().playerPosition ? useGame.getState().playerPosition : new THREE.Vector3(); // wait, Player physics stores velocity in a ref, not state!
-    // We can just use a simple sine wave for idle, and a faster one for walking if we can detect it.
-    // For simplicity, let's just do a constant idle bob + aggressive swing when mining.
+    const miningProgress = miningProgressRef.current;
+    const isMining = miningProgress > 0;
     
-    // Idle breath
     let targetX = 0.5;
     let targetY = -0.5 + Math.sin(time * 2) * 0.02;
     let targetZ = -1;
@@ -45,7 +43,6 @@ const Hand: React.FC<{ isMining: boolean; miningProgress: number }> = ({ isMinin
     let rotZ = 0;
     
     if (isMining) {
-      // Swing animation
       const swing = (miningProgress * 15) % (Math.PI * 2);
       targetY += Math.sin(swing) * 0.2;
       targetZ -= Math.sin(swing) * 0.2;
@@ -69,6 +66,40 @@ const Hand: React.FC<{ isMining: boolean; miningProgress: number }> = ({ isMinin
       </mesh>
     </group>,
     camera
+  );
+};
+
+
+const BlockDamageOverlay: React.FC<{ targetBlock: any, miningProgressRef: React.MutableRefObject<number>, getBlockData: any }> = ({ targetBlock, miningProgressRef, getBlockData }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  useFrame(() => {
+    if (!meshRef.current) return;
+    const progress = miningProgressRef.current;
+    if (progress > 0 && targetBlock) {
+      const data = getBlockData(targetBlock.blockType);
+      const hardness = data?.hardness ?? 0.5;
+      const ratio = Math.min(1, progress / hardness);
+      meshRef.current.visible = true;
+      (meshRef.current.material as THREE.MeshBasicMaterial).opacity = ratio * 0.8;
+    } else {
+      meshRef.current.visible = false;
+    }
+  });
+  
+  if (!targetBlock || targetBlock.distance <= 0.25) return null;
+  
+  return (
+    <group position={[targetBlock.position.x + 0.5, targetBlock.position.y + 0.5, targetBlock.position.z + 0.5]}>
+      <mesh>
+        <boxGeometry args={[1.01, 1.01, 1.01]} />
+        <meshBasicMaterial color="white" wireframe opacity={0.5} transparent />
+      </mesh>
+      <mesh ref={meshRef} visible={false}>
+        <boxGeometry args={[1.005, 1.005, 1.005]} />
+        <meshBasicMaterial color="black" transparent depthWrite={false} />
+      </mesh>
+    </group>
   );
 };
 
@@ -405,24 +436,8 @@ const Player: React.FC = () => {
 
   return (
     <>
-      <Hand isMining={miningProgressRef.current > 0} miningProgress={miningProgressRef.current} />
-      {targetBlock && targetBlock.distance > 0.25 && (
-        <mesh
-          position={[
-            targetBlock.position.x + 0.5,
-            targetBlock.position.y + 0.5,
-            targetBlock.position.z + 0.5,
-          ]}
-        >
-          <boxGeometry args={[1.01, 1.01, 1.01]} />
-          <meshBasicMaterial
-            color="white"
-            wireframe
-            opacity={0.5}
-            transparent
-          />
-        </mesh>
-      )}
+      <Hand miningProgressRef={miningProgressRef} />
+      <BlockDamageOverlay targetBlock={targetBlock} miningProgressRef={miningProgressRef} getBlockData={getBlockData} />
     </>
   );
 };
