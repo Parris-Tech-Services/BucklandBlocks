@@ -53,3 +53,50 @@ export function resolveKeyboardCommand(
 
   return null;
 }
+
+
+export interface KeyboardCommandActions {
+  pause: () => void;
+  openInventory: () => void;
+  closeInventory: () => void;
+  openCrafting: () => void;
+  closeCrafting: () => void;
+  selectHotbar: (slot: number) => void;
+  dropSelected: (wholeStack: boolean) => void;
+  toggleHud: () => void;
+  changeViewDistance: (delta: 1 | -1) => void;
+}
+
+export function executeKeyboardCommand(
+  command: Exclude<KeyboardCommand, null>,
+  actions: KeyboardCommandActions,
+): void {
+  switch (command.type) {
+    case "pause":
+      actions.pause();
+      return;
+    case "open-inventory":
+      actions.openInventory();
+      return;
+    case "close-inventory":
+      actions.closeInventory();
+      return;
+    case "open-crafting":
+      actions.openCrafting();
+      return;
+    case "close-crafting":
+      actions.closeCrafting();
+      return;
+    case "select-hotbar":
+      actions.selectHotbar(command.slot);
+      return;
+    case "drop-selected":
+      actions.dropSelected(command.wholeStack);
+      return;
+    case "toggle-hud":
+      actions.toggleHud();
+      return;
+    case "change-view-distance":
+      actions.changeViewDistance(command.delta);
+  }
+}
