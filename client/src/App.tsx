@@ -82,7 +82,10 @@ function Game() {
       gameInput.key(event.code, false, false);
     };
     const mouseDown = (event: MouseEvent) => {
-      gameInput.mouse(event.button, true, isGameplayActive());
+      const active = isGameplayActive();
+      if (gameInput.mouse(event.button, true, active) && active) {
+        event.preventDefault();
+      }
     };
     const mouseUp = (event: MouseEvent) => {
       gameInput.mouse(event.button, false, false);
@@ -148,8 +151,10 @@ function Game() {
 
   useEffect(
     () =>
-      useSession.subscribe((state) => {
-        if (state.menu !== null) {
+      useSession.subscribe((state, previousState) => {
+        // Release pointer lock only when gameplay opens a menu. State updates
+        // while already paused must not cancel a newly requested Resume lock.
+        if (previousState.menu === null && state.menu !== null) {
           gameInput.clear();
           if (document.pointerLockElement) document.exitPointerLock();
         }
@@ -235,48 +240,16 @@ function Game() {
       <GameHUD />
 
       <div hidden={menu !== "inventory"}>
-        <Inventory onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <Inventory onClose={resume} />
       </div>
       <div hidden={menu !== "crafting"}>
-        <Crafting onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <Crafting onClose={resume} />
       </div>
       <div hidden={menu !== "crafting_table"}>
-        <CraftingTable onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <CraftingTable onClose={resume} />
       </div>
       <div hidden={menu !== "furnace"}>
-        <FurnaceUI onClose={() => {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        }} />
+        <FurnaceUI onClose={resume} />
       </div>
 
       {menu === "pause" && (
