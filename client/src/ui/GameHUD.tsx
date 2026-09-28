@@ -13,6 +13,20 @@ const GameHUD: React.FC = () => {
     fps,
   } = useGame();
 
+
+  const [popupName, setPopupName] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const type = inventory[selectedSlot];
+    if (type !== null) {
+      setPopupName(getBlockData(type)?.name || null);
+      const timer = setTimeout(() => setPopupName(null), 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setPopupName(null);
+    }
+  }, [selectedSlot, inventory]);
+
   // Same time-of-day display you had
   const timeOfDay = Math.floor((gameTime / 1000) % 24);
   const isNight = timeOfDay >= 18 || timeOfDay < 6;
@@ -53,6 +67,14 @@ const GameHUD: React.FC = () => {
         <div>1-9: Hotbar</div>
       </div>
 
+
+      {/* Hotbar Name Popup */}
+      {popupName && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-white font-bold text-xl drop-shadow-md animate-pulse font-mono transition-opacity" style={{ textShadow: '2px 2px 0 #000' }}>
+          {popupName}
+        </div>
+      )}
+
       {/* Hotbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
         <div className="flex space-x-1 bg-black/75 p-2 rounded">
@@ -70,10 +92,8 @@ const GameHUD: React.FC = () => {
               >
                 {blockType !== null && blockType !== BlockType.AIR && (
                   <>
-                    <div className="text-[8px] font-bold">
-                      {BLOCKS[blockType].name.slice(0, 3)}
-                    </div>
-                    <div className="text-[10px]">{count > 0 ? count : ""}</div>
+                    <img src={getBlockData(blockType)?.texture} className="w-full h-full object-cover pixelated p-1" alt="" />
+                    <div className="absolute bottom-0 right-1 text-[10px] font-bold font-mono" style={{ textShadow: '1px 1px 0 #000' }}>{count > 0 ? count : ""}</div>
                   </>
                 )}
                 <div className="absolute bottom-0 right-0 text-[8px] text-gray-400">

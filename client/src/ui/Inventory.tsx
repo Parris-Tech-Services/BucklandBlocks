@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
-import { BlockType, getBlockData } from '../engine/blocks';
+import { X, Package, Box } from 'lucide-react';
+import { BlockType, getBlockData, BLOCKS } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
 
 interface InventoryProps {
@@ -8,12 +8,70 @@ interface InventoryProps {
 }
 
 const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
+  const [tab, setTab] = useState<'survival' | 'creative'>('survival');
   const { 
     inventory, inventoryCounts, selectedSlot, setSelectedSlot,
-    cursorItem, setCursorItem
+    cursorItem, setCursorItem, armor
   } = useGame();
 
   
+  
+  
+  const handleCreativeClick = (e: React.MouseEvent, type: BlockType) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const data = getBlockData(type);
+    if (!data) return;
+    
+    useGame.setState({ cursorItem: { type, count: data.maxStack } });
+  };
+
+  const handleSort = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const state = useGame.getState();
+    const newInventory = [...state.inventory];
+    const newCounts = [...state.inventoryCounts];
+    
+    // Sort main inventory (slots 9 to 35)
+    // 1. Group identical items
+    for (let i = 9; i < 36; i++) {
+      if (newInventory[i] === null) continue;
+      const maxStack = getBlockData(newInventory[i])?.maxStack ?? 64;
+      for (let j = i + 1; j < 36; j++) {
+        if (newInventory[j] === newInventory[i]) {
+          const space = maxStack - newCounts[i];
+          const toMove = Math.min(space, newCounts[j]);
+          if (toMove > 0) {
+            newCounts[i] += toMove;
+            newCounts[j] -= toMove;
+            if (newCounts[j] === 0) newInventory[j] = null;
+          }
+        }
+      }
+    }
+    
+    // 2. Extract and sort non-empty slots by ID
+    const items = [];
+    for (let i = 9; i < 36; i++) {
+      if (newInventory[i] !== null) {
+        items.push({ type: newInventory[i], count: newCounts[i] });
+        newInventory[i] = null;
+        newCounts[i] = 0;
+      }
+    }
+    items.sort((a, b) => a.type - b.type);
+    
+    // 3. Place them back
+    for (let i = 0; i < items.length; i++) {
+      newInventory[9 + i] = items[i].type;
+      newCounts[9 + i] = items[i].count;
+    }
+    
+    useGame.setState({ inventory: newInventory, inventoryCounts: newCounts });
+  };
+
   const handleDropOutside = (e: React.MouseEvent) => {
     e.preventDefault();
     if (cursorItem) {

@@ -19,6 +19,7 @@ interface GameState {
   // Inventory
   inventory: (BlockType | null)[];
   inventoryCounts: number[];
+  armor: (BlockType | null)[];
   selectedSlot: number;
   // World
   chunks: Map<string, ChunkData>;
@@ -95,6 +96,7 @@ export const useGame = create<GameState>()(
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: savedGame?.inventory?.slots || initialInventory,
       inventoryCounts: savedGame?.inventory?.counts || initialCounts,
+      armor: savedGame?.armor || new Array(4).fill(null),
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state
