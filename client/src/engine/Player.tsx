@@ -7,6 +7,7 @@ import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
 import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
 import { heldTool, idleMining, stepMining } from "./mining";
+import { hasSolidSupport } from "./placement";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -422,7 +423,14 @@ const Player: React.FC = () => {
           ),
         );
 
-        if (!playerBox.intersectsBox(blockBox)) {
+        const canPlace = hasSolidSupport(
+          Math.floor(x),
+          Math.floor(y),
+          Math.floor(z),
+          getBlock,
+        );
+
+        if (canPlace && !playerBox.intersectsBox(blockBox)) {
           setBlock(
             Math.floor(x),
             Math.floor(y),
