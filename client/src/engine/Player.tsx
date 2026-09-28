@@ -8,6 +8,7 @@ import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
 import { heldTool, idleMining, stepMining } from "./mining";
 import { createHitTimer, playBreak, playHit, playPlace } from "./sfx";
 import { hasSolidSupport } from "./placement";
+import { getFallDamage } from "./physics";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -118,6 +119,7 @@ const Player: React.FC = () => {
     setBlock,
     getBlock,
     getChunk,
+    damagePlayer,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -127,6 +129,7 @@ const Player: React.FC = () => {
   const miningProgressRef = useRef(0);
   const miningRef = useRef(idleMining());
   const hitTimerRef = useRef(createHitTimer());
+  const fallStartYRef = useRef<number | null>(null);
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -276,8 +279,27 @@ const Player: React.FC = () => {
 
     direction.normalize();
 
-    const speed = PLAYER_SPEED * (keys.sneak ? 0.5 : 1);
-    const control = onGroundRef.current ? 1 : AIR_CONTROL;
+    const inWater = [
+      Math.floor(camera.position.y),
+      Math.floor(camera.position.y - 0.9),
+      Math.floor(camera.position.y - PLAYER_HEIGHT),
+    ].some(
+      (y) =>
+        getBlock(
+          Math.floor(camera.position.x),
+          y,
+          Math.floor(camera.position.z),
+        ) === BlockType.WATER,
+    );
+
+    const speed = inWater
+      ? PLAYER_SPEED * (keys.sneak ? 0.35 : 0.65)
+      : PLAYER_SPEED * (keys.sneak ? 0.5 : 1);
+    const control = inWater
+      ? 0.55
+      : onGroundRef.current
+        ? 1
+        : AIR_CONTROL;
 
     const targetVelocity = direction.multiplyScalar(speed);
     velocity.x = THREE.MathUtils.lerp(
@@ -291,12 +313,26 @@ const Player: React.FC = () => {
       control,
     );
 
-    if (keys.jump && onGroundRef.current) {
+    if (inWater && keys.jump) {
+      velocity.y = Math.max(velocity.y, 4.5);
+    } else if (inWater && keys.sneak) {
+      velocity.y = Math.min(velocity.y, -3.5);
+    } else if (keys.jump && onGroundRef.current) {
       velocity.y = JUMP_FORCE;
       onGroundRef.current = false;
     }
 
-    velocity.y += GRAVITY * delta;
+    velocity.y += (inWater ? -3 : GRAVITY) * delta;
+    if (inWater) {
+      velocity.y = THREE.MathUtils.clamp(velocity.y, -4, 4.5);
+    }
+
+    if (!inWater && fallStartYRef.current === null && velocity.y < 0) {
+      fallStartYRef.current = camera.position.y;
+    }
+    if (inWater) {
+      fallStartYRef.current = null;
+    }
 
     const moveDelta = velocity.clone().multiplyScalar(delta);
     moveAxisWithCollision(
@@ -326,6 +362,18 @@ const Player: React.FC = () => {
       getBlock,
     );
     onGroundRef.current = blockedY && wasFalling;
+
+    if (blockedY && wasFalling) {
+      const fallDistance =
+        fallStartYRef.current === null
+          ? 0
+          : fallStartYRef.current - camera.position.y;
+      const damage = getFallDamage(fallDistance, inWater);
+      if (damage > 0) {
+        damagePlayer(damage);
+      }
+      fallStartYRef.current = null;
+    }
 
     const raycast = performRaycast(
       camera.position,
