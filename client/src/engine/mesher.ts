@@ -9,7 +9,7 @@ export function createBlockMesh(
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
-  const indicesByMaterial: number[][] = Array.from({ length: 7 }, () => []);
+  const indicesByMaterial: number[][] = Array.from({ length: 10 }, () => []);
 
   let vertexIndex = 0;
 
@@ -123,20 +123,32 @@ export function createBlockMesh(
       case BlockType.DIRT:
         materialIndex = 0; break;
       case BlockType.GRASS:
+      case BlockType.LEAF:
         materialIndex = 1; break;
       case BlockType.STONE:
       case BlockType.COBBLESTONE:
+      case BlockType.BRICK:
         materialIndex = 2; break;
       case BlockType.WOOD_LOG:
       case BlockType.WOOD_PLANK:
       case BlockType.WOOD:
+      case BlockType.DOOR_BOTTOM:
+      case BlockType.DOOR_TOP:
+      case BlockType.TORCH:
         materialIndex = 3; break;
       case BlockType.SAND:
         materialIndex = 4; break;
       case BlockType.SKY:
+      case BlockType.GLASS:
         materialIndex = 5; break;
       case BlockType.WATER:
         materialIndex = 6; break;
+      case BlockType.CRAFTING_TABLE:
+        materialIndex = 7; break;
+      case BlockType.CHEST:
+        materialIndex = 8; break;
+      case BlockType.FURNACE:
+        materialIndex = 9; break;
       default:
         materialIndex = 0; break;
     }
