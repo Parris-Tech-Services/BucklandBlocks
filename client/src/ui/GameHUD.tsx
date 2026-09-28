@@ -41,7 +41,9 @@ const GameHUD: React.FC = () => {
   const handleRespawn = () => {
     respawn();
     window.dispatchEvent(new Event("playerRespawn"));
-    setMenu(null);
+    // Pointer lock was released when the death menu opened. Return to Pause
+    // so Resume can reacquire mouse capture through the tested path.
+    setMenu("pause");
   };
 
   // Same time-of-day display you had
