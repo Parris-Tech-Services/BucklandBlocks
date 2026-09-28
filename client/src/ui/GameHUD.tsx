@@ -14,6 +14,7 @@ const GameHUD: React.FC = () => {
     fps,
     health,
     respawn,
+    worldSeed,
   } = useGame();
   const menu = useSession((state) => state.menu);
   const setMenu = useSession((state) => state.setMenu);
@@ -76,6 +77,7 @@ const GameHUD: React.FC = () => {
           Time: {timeOfDay}:00 {isNight ? "🌙" : "☀️"}
         </div>
         <div>Biome: Temperate</div>
+        <div>Seed: {worldSeed}</div>
         <div>View: {viewDistance} chunk{viewDistance === 1 ? "" : "s"}</div>
       </div>
 
