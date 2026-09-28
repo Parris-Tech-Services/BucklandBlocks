@@ -9,19 +9,21 @@ export function normaliseStack(stack: Stack): Stack {
   return { type: stack.type, count: Math.min(MAX_STACK, stack.count) };
 }
 
-export function addItems(slots: Stack[], type: BlockType, requested: number) {
+/** `maxStack` is this item's stack limit, e.g. 1 for tools. */
+export function addItems(slots: Stack[], type: BlockType, requested: number, maxStack = MAX_STACK) {
+  const limit = Math.max(1, Math.min(MAX_STACK, Math.floor(maxStack)));
   const next = slots.map(normaliseStack);
   let remaining = Number.isInteger(requested) && requested > 0 ? requested : 0;
   for (let i = 0; i < next.length && remaining; i++) {
     const s = next[i];
-    if (s?.type === type && s.count < MAX_STACK) {
-      const n = Math.min(remaining, MAX_STACK - s.count);
+    if (s?.type === type && s.count < limit) {
+      const n = Math.min(remaining, limit - s.count);
       s.count += n; remaining -= n;
     }
   }
   for (let i = 0; i < next.length && remaining; i++) {
     if (!next[i]) {
-      const n = Math.min(remaining, MAX_STACK);
+      const n = Math.min(remaining, limit);
       next[i] = { type, count: n }; remaining -= n;
     }
   }

@@ -1,51 +1,51 @@
 import React, { useEffect, useState } from "react";
-import { BlockType, getBlockData } from "../engine/blocks";
+import { getBlockData } from "../engine/blocks";
 import { useGame } from "../lib/stores/useGame";
+import { useSession } from "../engine/session";
+import ItemIcon from "./ItemIcon";
 
 const GameHUD: React.FC = () => {
-  // All data comes from the store (updated by the in-Canvas HooksBridge)
-  const {
-    selectedSlot,
-    inventory,
-    inventoryCounts,
-    gameTime,
-    playerPosition,
-    fps,
-  } = useGame();
+  // Subscribe field by field so chunk updates don't re-render the HUD.
+  const selectedSlot = useGame((state) => state.selectedSlot);
+  const inventory = useGame((state) => state.inventory);
+  const inventoryCounts = useGame((state) => state.inventoryCounts);
+  const gameTime = useGame((state) => state.gameTime);
+  const playerPosition = useGame((state) => state.playerPosition);
+  const fps = useGame((state) => state.fps);
+  const menu = useSession((state) => state.menu);
 
-
+  // Briefly show the full name of the newly selected item, like Minecraft.
   const [popupName, setPopupName] = useState<string | null>(null);
-  
+  const selectedType = inventory[selectedSlot];
   useEffect(() => {
-    const type = inventory[selectedSlot];
-    if (type !== null) {
-      setPopupName(getBlockData(type)?.name || null);
-      const timer = setTimeout(() => setPopupName(null), 2000);
-      return () => clearTimeout(timer);
-    } else {
+    if (selectedType === null) {
       setPopupName(null);
+      return;
     }
-  }, [selectedSlot, inventory]);
+    setPopupName(getBlockData(selectedType)?.name ?? null);
+    const timer = setTimeout(() => setPopupName(null), 2000);
+    return () => clearTimeout(timer);
+  }, [selectedSlot, selectedType]);
 
-  // Same time-of-day display you had
-  const timeOfDay = Math.floor((gameTime / 1000) % 24);
+  const timeOfDay = Math.floor(((gameTime % 24000) / 24000) * 24);
   const isNight = timeOfDay >= 18 || timeOfDay < 6;
 
   return (
-    <div className="fixed inset-0 pointer-events-none select-none">
-      {/* Crosshair */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative w-4 h-4 border-2 border-white opacity-75">
-          <div className="absolute top-1/2 left-1/2 w-0.5 h-4 bg-white -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute top-1/2 left-1/2 w-4 h-0.5 bg-white -translate-x-1/2 -translate-y-1/2" />
+    <div className="pointer-events-none fixed inset-0 select-none">
+      {menu === null && (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="relative h-4 w-4 opacity-80">
+            <div className="absolute left-1/2 top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-white" />
+            <div className="absolute left-1/2 top-1/2 h-0.5 w-4 -translate-x-1/2 -translate-y-1/2 bg-white" />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* HUD Info */}
-      <div className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded font-mono text-sm">
+      <div className="absolute left-4 top-4 rounded bg-black/55 p-2 font-mono text-sm text-white">
         <div>FPS: {Math.round(fps)}</div>
         <div>
-          XYZ: {playerPosition.x.toFixed(1)}, {playerPosition.y.toFixed(1)},{" "}
+          XYZ: {playerPosition.x.toFixed(1)},{" "}
+          {playerPosition.y.toFixed(1)},{" "}
           {playerPosition.z.toFixed(1)}
         </div>
         <div>
@@ -54,54 +54,39 @@ const GameHUD: React.FC = () => {
         <div>Biome: Temperate</div>
       </div>
 
-      {/* Controls Help */}
-      <div className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded font-mono text-xs">
-        <div>WASD: Move</div>
+      <div className="absolute right-4 top-4 rounded bg-black/55 p-2 font-mono text-xs text-white">
+        <div>WASD: Move · Space: Jump</div>
         <div>Mouse: Look</div>
-        <div>Space: Jump</div>
-        <div>LMB: Mine</div>
-        <div>RMB: Place</div>
-        <div>E: Inventory</div>
-        <div>C: Crafting</div>
-        <div>ESC: Pause</div>
-        <div>1-9: Hotbar</div>
+        <div>LMB (hold): Mine · RMB: Place</div>
+        <div>E: Inventory · C: Crafting</div>
+        <div>ESC: Pause · 1-9: Hotbar</div>
       </div>
 
-
-      {/* Hotbar Name Popup */}
-      {popupName && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-white font-bold text-xl drop-shadow-md animate-pulse font-mono transition-opacity" style={{ textShadow: '2px 2px 0 #000' }}>
+      {popupName && menu === null && (
+        <div
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 font-mono text-xl font-bold text-white"
+          style={{ textShadow: "2px 2px 0 #000" }}
+        >
           {popupName}
         </div>
       )}
 
-      {/* Hotbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <div className="flex space-x-1 bg-black/75 p-2 rounded">
-          {Array.from({ length: 9 }, (_, i) => {
-            const blockType = inventory[i];
-            const count = inventoryCounts[i];
-            const isSelected = i === selectedSlot;
-
+        <div className="flex space-x-1 rounded bg-black/75 p-2">
+          {Array.from({ length: 9 }, (_, index) => {
+            const blockType = inventory[index];
+            const selected = index === selectedSlot;
             return (
               <div
-                key={i}
+                key={index}
                 title={blockType !== null ? getBlockData(blockType)?.name : "Empty"}
-                className={`relative w-12 h-12 border-2 flex flex-col items-center justify-center text-white text-xs ${
-                  isSelected ? "border-white bg-gray-700" : "border-gray-500 bg-gray-800"
+                className={`relative h-12 w-12 border-2 ${
+                  selected ? "border-white bg-gray-700" : "border-gray-500 bg-gray-800"
                 }`}
               >
-                {blockType !== null && blockType !== BlockType.AIR && (
-                  <>
-                    <img src={getBlockData(blockType)?.texture} className="w-full h-full object-cover pixelated p-1" alt="" />
-                    <div className="absolute top-0 left-0 right-0 truncate bg-black/60 px-0.5 text-[7px] font-bold leading-3" style={{ textShadow: '1px 1px 0 #000' }}>
-                      {getBlockData(blockType)?.name}
-                    </div>
-                    <div className="absolute bottom-0 right-1 text-[10px] font-bold font-mono" style={{ textShadow: '1px 1px 0 #000' }}>{count > 0 ? count : ""}</div>
-                  </>
-                )}
-                <div className="absolute bottom-0 right-0 text-[8px] text-gray-400">
-                  {i + 1}
+                {blockType !== null && <ItemIcon type={blockType} count={inventoryCounts[index]} />}
+                <div className="absolute bottom-0 left-0.5 text-[8px] text-gray-400">
+                  {index + 1}
                 </div>
               </div>
             );

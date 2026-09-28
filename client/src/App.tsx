@@ -82,7 +82,10 @@ function Game() {
       gameInput.key(event.code, false, false);
     };
     const mouseDown = (event: MouseEvent) => {
-      gameInput.mouse(event.button, true, isGameplayActive());
+      const active = isGameplayActive();
+      if (gameInput.mouse(event.button, true, active) && active) {
+        event.preventDefault();
+      }
     };
     const mouseUp = (event: MouseEvent) => {
       gameInput.mouse(event.button, false, false);
@@ -148,8 +151,11 @@ function Game() {
 
   useEffect(
     () =>
-      useSession.subscribe((state) => {
-        if (state.menu !== null) {
+      useSession.subscribe((state, previousState) => {
+        // Only release pointer lock when a menu is actually opened from
+        // gameplay. State updates while already paused (for example the
+        // pointer-lock result itself) must not immediately unlock again.
+        if (previousState.menu === null && state.menu !== null) {
           gameInput.clear();
           if (document.pointerLockElement) document.exitPointerLock();
         }
@@ -167,12 +173,12 @@ function Game() {
 
     try {
       const request = canvas.requestPointerLock();
-      if (request && typeof (request as PromiseLike<void>).then === "function") {
+      if (
+        request &&
+        typeof (request as PromiseLike<void>).then === "function"
+      ) {
         void Promise.resolve(request)
           .then(() => {
-            // Modern browsers resolve requestPointerLock() when capture has
-            // been granted. Keep the event listener as the compatibility path
-            // for browsers that return void from this API.
             useSession.setState({
               menu: null,
               pointerLocked: true,

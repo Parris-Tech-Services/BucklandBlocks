@@ -117,7 +117,6 @@ const Player: React.FC = () => {
     setBlock,
     getBlock,
     getChunk,
-    markChunkDirty,
   } = useGame();
 
   const velocityRef = useRef(new THREE.Vector3());
@@ -344,14 +343,22 @@ const Player: React.FC = () => {
     });
 
     const now = Date.now();
+    const mineRequested =
+      keys.mine || gameInput.hasMousePress("mine");
+    const placeRequested =
+      keys.place || gameInput.hasMousePress("place");
 
     const miningTarget = raycast && raycast.distance > 0.25
       ? { key: `${raycast.position.x},${raycast.position.y},${raycast.position.z}`, blockType: raycast.blockType }
       : null;
+    // A quick click between frames counts as mining for this frame, so a
+    // tap still breaks instant blocks. Consume the queued press only when
+    // mining can act, so a click during the break cooldown is not lost.
+    if (miningRef.current.cooldown <= delta) gameInput.consumeMousePress("mine");
     const broke = stepMining(
       miningRef.current,
       miningTarget,
-      keys.mine,
+      mineRequested,
       heldTool(inventory[selectedSlot]),
       delta,
     );
@@ -360,7 +367,7 @@ const Player: React.FC = () => {
     // Swing sounds repeat while mining a valid block; the break sound below
     // replaces the swing on the frame the block actually breaks.
     const swinging =
-      keys.mine && !broke && miningTarget !== null && isMineable(miningTarget.blockType);
+      mineRequested && !broke && miningTarget !== null && isMineable(miningTarget.blockType);
     if (hitSoundDueRef.current(swinging, delta) && miningTarget) {
       playHit(miningTarget.blockType);
     }
@@ -378,10 +385,6 @@ const Player: React.FC = () => {
         BlockType.AIR,
       );
 
-      const chunkX = Math.floor(Math.floor(x) / 16);
-      const chunkZ = Math.floor(Math.floor(z) / 16);
-      markChunkDirty(chunkX, chunkZ);
-
       playBreak(blockType);
 
       // Anything that doesn't fit in a full inventory drops into the world.
@@ -393,8 +396,9 @@ const Player: React.FC = () => {
     }
 
     if (
-      keys.place &&
+      placeRequested &&
       raycast &&
+      raycast.distance > 0.25 &&
       now - lastActionRef.current > 200
     ) {
       const selectedBlockType = inventory[selectedSlot];
@@ -404,6 +408,7 @@ const Player: React.FC = () => {
         inventoryCounts[selectedSlot] > 0 &&
         getBlockData(selectedBlockType).placeable !== false
       ) {
+        gameInput.consumeMousePress("place");
         lastActionRef.current = now;
 
         const placePos = raycast.position.clone().add(raycast.normal);
@@ -442,10 +447,6 @@ const Player: React.FC = () => {
             Math.floor(z),
             selectedBlockType,
           );
-
-          const chunkX = Math.floor(Math.floor(x) / 16);
-          const chunkZ = Math.floor(Math.floor(z) / 16);
-          markChunkDirty(chunkX, chunkZ);
 
           removeFromInventory(selectedSlot, 1);
           playPlace(selectedBlockType);

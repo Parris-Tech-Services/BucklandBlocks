@@ -200,7 +200,7 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
       <div
           key={slotIndex}
           title={blockType !== null ? getBlockData(blockType)?.name : undefined}
-        className={`w-12 h-12 border-2 ${isSelected ? 'border-yellow-400' : 'border-gray-500'} bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600`}
+        className={`relative aspect-square min-w-0 border-2 ${isSelected ? 'border-yellow-400' : 'border-gray-500'} bg-gray-700 cursor-pointer hover:bg-gray-600`}
         onClick={(e) => handleSlotClick(e, slotIndex)}
         onContextMenu={(e) => handleSlotClick(e, slotIndex)}
       >
@@ -210,8 +210,8 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto">
-      <div className="bg-gray-800 border-2 border-gray-400 p-4 rounded-lg min-w-[400px]">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto p-3">
+      <div className="bg-gray-800 border-2 border-gray-400 p-3 sm:p-4 rounded-lg w-full max-w-[520px]">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-white text-lg font-bold">Inventory</h2>
           <button onClick={onClose} className="text-white hover:text-gray-300">
