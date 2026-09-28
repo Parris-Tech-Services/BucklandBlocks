@@ -8,6 +8,7 @@ import {
   type Stack,
 } from "../../engine/inventory";
 import { readSave } from "../../engine/save";
+import { craftFromInventory } from "../../engine/crafting";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -230,61 +231,15 @@ export const useGame = create<GameState>()(
       },
 
       craftRecipe: (ingredients, result) => {
-        if (
-          !Number.isInteger(result.count) ||
-          result.count <= 0 ||
-          ingredients.some(
-            (ingredient) =>
-              !Number.isInteger(ingredient.count) || ingredient.count <= 0,
-          )
-        ) {
-          return false;
-        }
-
         const state = get();
-        const inventory = [...state.inventory];
-        const counts = [...state.inventoryCounts];
-
-        const required = new Map<BlockType, number>();
-        ingredients.forEach((ingredient) => {
-          required.set(
-            ingredient.type,
-            (required.get(ingredient.type) ?? 0) + ingredient.count,
-          );
-        });
-
-        for (const [type, needed] of required) {
-          let available = 0;
-          for (let i = 0; i < INVENTORY_SIZE; i += 1) {
-            if (inventory[i] === type) available += counts[i];
-          }
-          if (available < needed) return false;
-        }
-
-        for (const [type, needed] of required) {
-          let remaining = needed;
-          for (
-            let i = 0;
-            i < INVENTORY_SIZE && remaining > 0;
-            i += 1
-          ) {
-            if (inventory[i] !== type || counts[i] <= 0) continue;
-
-            const used = Math.min(counts[i], remaining);
-            counts[i] -= used;
-            remaining -= used;
-            if (counts[i] === 0) inventory[i] = null;
-          }
-        }
-
-        const output = addItems(
-          toStacks(inventory, counts),
-          result.type,
-          result.count,
+        const crafted = craftFromInventory(
+          toStacks(state.inventory, state.inventoryCounts),
+          ingredients,
+          result,
         );
-        if (output.remainder > 0) return false;
 
-        set(fromStacks(output.slots));
+        if (!crafted.ok) return false;
+        set(fromStacks(crafted.slots));
         return true;
       },
 
