@@ -1,21 +1,13 @@
 import React, { useMemo } from 'react';
 import { X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
+import ItemIcon from './ItemIcon';
 import { useGame } from '../lib/stores/useGame';
-import recipesData from '../data/recipes.json';
+import { RECIPES as recipes } from '../engine/recipes';
 
 interface CraftingTableProps {
   onClose: () => void;
 }
-
-interface Recipe {
-  id: string;
-  result: { type: BlockType; count: number };
-  pattern: string[];
-  legend: Record<string, BlockType>;
-}
-
-const recipes = recipesData as Recipe[];
 
 const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
   const { 
@@ -130,18 +122,21 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
     const resultCount = craftResult.result.count;
     
     if (e.shiftKey && !newCursor) {
+      // Ingredients are consumed below, so anything that doesn't fit in the
+      // inventory is dropped at the player's feet rather than lost.
       const remaining = state.addToInventory(resultType, resultCount);
-      if (remaining < resultCount) {
-        const newGrid = [...state.craftingTableGrid];
-        const newCounts = [...state.craftingTableCounts];
-        for (let i = 0; i < newGrid.length; i++) {
-          if (newGrid[i] !== null) {
-            newCounts[i]--;
-            if (newCounts[i] <= 0) newGrid[i] = null;
-          }
-        }
-        useGame.setState({ craftingTableGrid: newGrid, craftingTableCounts: newCounts });
+      if (remaining > 0) {
+        state.addDroppedItem(resultType, remaining, state.playerPosition.clone());
       }
+      const newGrid = [...state.craftingTableGrid];
+      const newCounts = [...state.craftingTableCounts];
+      for (let i = 0; i < newGrid.length; i++) {
+        if (newGrid[i] !== null) {
+          newCounts[i]--;
+          if (newCounts[i] <= 0) newGrid[i] = null;
+        }
+      }
+      useGame.setState({ craftingTableGrid: newGrid, craftingTableCounts: newCounts });
       return;
     }
     
@@ -191,16 +186,7 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
                   title={blockType !== null ? getBlockData(blockType)?.name : undefined}
                   className="w-12 h-12 bg-gray-700 border-2 border-gray-600 hover:border-gray-400 hover:bg-gray-600 transition-colors rounded cursor-pointer relative"
                 >
-                  {blockType !== null && (
-                    <>
-                      <img src={getBlockData(blockType)?.texture} alt="item" className="w-full h-full object-cover pixelated p-1" />
-                      {craftingTableCounts[i] > 1 && (
-                        <span className="absolute bottom-0 right-1 text-white text-xs font-bold font-mono" style={{ textShadow: '1px 1px 0 #000' }}>
-                          {craftingTableCounts[i]}
-                        </span>
-                      )}
-                    </>
-                  )}
+                  {blockType !== null && <ItemIcon type={blockType} count={craftingTableCounts[i]} />}
                 </div>
               );
             })}
@@ -213,18 +199,16 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
             title={craftResult ? getBlockData(craftResult.result.type)?.name : undefined}
             className="w-16 h-16 bg-gray-700 border-2 border-gray-500 hover:border-gray-300 transition-colors rounded cursor-pointer relative"
           >
-            {craftResult && (
-              <>
-                <img src={getBlockData(craftResult.result.type)?.texture} alt="result" className="w-full h-full object-cover pixelated p-2" />
-                {craftResult.result.count > 1 && (
-                  <span className="absolute bottom-0 right-1 text-white text-sm font-bold font-mono" style={{ textShadow: '1px 1px 0 #000' }}>
-                    {craftResult.result.count}
-                  </span>
-                )}
-              </>
-            )}
+            {craftResult && <ItemIcon type={craftResult.result.type} count={craftResult.result.count} />}
           </div>
         </div>
+        {cursorItem && (
+          <div className="fixed pointer-events-none z-[100]" style={{ left: '50%', top: '10%', transform: 'translate(-50%, -50%)' }}>
+            <div className="w-12 h-12 border-2 border-white bg-gray-700 opacity-80">
+              <ItemIcon type={cursorItem.type} count={cursorItem.count} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

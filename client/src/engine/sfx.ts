@@ -83,6 +83,15 @@ function audio(): AudioContext | null {
 }
 
 function play(material: Material, loudness: number, pitch: number) {
+  // Sound is decoration: an audio failure must never interrupt gameplay.
+  try {
+    synthesise(material, loudness, pitch);
+  } catch {
+    // Ignore; e.g. the browser refused to create another AudioContext.
+  }
+}
+
+function synthesise(material: Material, loudness: number, pitch: number) {
   const ctx = audio();
   if (!ctx || !noise) return;
   const voice = VOICES[material];

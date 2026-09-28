@@ -21,6 +21,15 @@ export interface BlockEntity {
   progress: number;
 }
 
+/** An item stack held on the mouse cursor while rearranging slots. */
+export interface ItemStack {
+  type: BlockType;
+  count: number;
+}
+
+export const CRAFTING_GRID_SIZE = 4; // 2x2 inventory crafting
+export const CRAFTING_TABLE_GRID_SIZE = 9; // 3x3 crafting table
+
 export interface DroppedItem {
   id: string;
   type: BlockType;
@@ -42,6 +51,12 @@ interface GameState {
   setBlockEntity: (id: string, entity: BlockEntity | null) => void;
 
   armor: (BlockType | null)[];
+  cursorItem: ItemStack | null;
+  setCursorItem: (item: ItemStack | null) => void;
+  craftingGrid: (BlockType | null)[];
+  craftingCounts: number[];
+  craftingTableGrid: (BlockType | null)[];
+  craftingTableCounts: number[];
   droppedItems: DroppedItem[];
   addDroppedItem: (type: BlockType, count: number, position: THREE.Vector3) => void;
   removeDroppedItem: (id: string) => void;
@@ -61,7 +76,8 @@ interface GameState {
   setPlayerRotation: (rotation: { x: number; y: number }) => void;
   // Inventory actions
   setSelectedSlot: (slot: number) => void;
-  addToInventory: (blockType: BlockType, count?: number) => void;
+  /** Adds items and returns how many did not fit. */
+  addToInventory: (blockType: BlockType, count?: number) => number;
   removeFromInventory: (slot: number, count?: number) => void;
   // World actions
   setBlock: (x: number, y: number, z: number, blockType: BlockType) => void;
@@ -155,9 +171,16 @@ export const useGame = create<GameState>()(
       // Initial inventory (9 hotbar + 27 main = 36 total)
       inventory: loadedInventory,
       inventoryCounts: loadedInventoryCounts,
-      armor: savedGame?.armor || new Array(4).fill(null),
-      droppedItems: savedGame?.droppedItems || [],
-      blockEntities: savedGame?.blockEntities || {},
+      // Armor, dropped items, block entities and in-progress crafting are
+      // not part of the save format yet, so every session starts them empty.
+      armor: new Array(4).fill(null),
+      droppedItems: [],
+      blockEntities: {},
+      cursorItem: null,
+      craftingGrid: new Array(CRAFTING_GRID_SIZE).fill(null),
+      craftingCounts: new Array(CRAFTING_GRID_SIZE).fill(0),
+      craftingTableGrid: new Array(CRAFTING_TABLE_GRID_SIZE).fill(null),
+      craftingTableCounts: new Array(CRAFTING_TABLE_GRID_SIZE).fill(0),
       selectedSlot: savedGame?.inventory?.selectedSlot || 0,
       
       // Initial world state
@@ -203,6 +226,8 @@ export const useGame = create<GameState>()(
     },
     
     
+    setCursorItem: (item) => set({ cursorItem: item }),
+
     setBlockEntity: (id, entity) => set((state) => {
       const newEntities = { ...state.blockEntities };
       if (entity === null) delete newEntities[id];

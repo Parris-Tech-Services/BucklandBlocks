@@ -1,12 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { gameInput } from "./input";
 import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
 import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
-import { heldTool, idleMining, stepMining } from "./mining";
+import { heldTool, idleMining, isMineable, stepMining } from "./mining";
+import { createHitTimer, playBreak, playHit, playPlace } from "./sfx";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -126,6 +126,7 @@ const Player: React.FC = () => {
   const lastActionRef = useRef(0);
   const miningProgressRef = useRef(0);
   const miningRef = useRef(idleMining());
+  const hitSoundDueRef = useRef(createHitTimer());
 
   const findSurfaceY = (x: number, z: number): number => {
     for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
@@ -356,6 +357,14 @@ const Player: React.FC = () => {
     );
     miningProgressRef.current = miningRef.current.progress;
 
+    // Swing sounds repeat while mining a valid block; the break sound below
+    // replaces the swing on the frame the block actually breaks.
+    const swinging =
+      keys.mine && !broke && miningTarget !== null && isMineable(miningTarget.blockType);
+    if (hitSoundDueRef.current(swinging, delta) && miningTarget) {
+      playHit(miningTarget.blockType);
+    }
+
     if (broke && raycast) {
       lastActionRef.current = now;
 
@@ -373,9 +382,13 @@ const Player: React.FC = () => {
       const chunkZ = Math.floor(Math.floor(z) / 16);
       markChunkDirty(chunkX, chunkZ);
 
-      const drops = getBlockDrops(blockType);
-      drops.forEach((drop) => {
-        addToInventory(drop.id, drop.count);
+      playBreak(blockType);
+
+      // Anything that doesn't fit in a full inventory drops into the world.
+      const dropAt = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, Math.floor(z) + 0.5);
+      getBlockDrops(blockType).forEach((drop) => {
+        const remaining = addToInventory(drop.id, drop.count);
+        if (remaining > 0) useGame.getState().addDroppedItem(drop.id, remaining, dropAt);
       });
     }
 
@@ -435,6 +448,7 @@ const Player: React.FC = () => {
           markChunkDirty(chunkX, chunkZ);
 
           removeFromInventory(selectedSlot, 1);
+          playPlace(selectedBlockType);
         }
       }
     }

@@ -1,21 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
+import ItemIcon from './ItemIcon';
 import { useGame } from '../lib/stores/useGame';
-import recipesData from '../data/recipes.json';
+import { RECIPES as recipes } from '../engine/recipes';
 
 interface CraftingProps {
   onClose: () => void;
 }
-
-interface Recipe {
-  id: string;
-  result: { type: BlockType; count: number };
-  pattern: string[];
-  legend: Record<string, BlockType>;
-}
-
-const recipes = recipesData as Recipe[];
 
 const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
   const { 
@@ -174,16 +166,7 @@ const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
         onClick={(e) => handleCraftingSlotClick(e, slotIndex)}
         onContextMenu={(e) => handleCraftingSlotClick(e, slotIndex)}
       >
-        {blockType !== null && blockType !== BlockType.AIR && (
-          <>
-            <div className="text-white text-[8px] font-bold text-center">
-              {getBlockData(blockType)?.name.slice(0, 8) || 'Unknown'}
-            </div>
-            {count > 0 && (
-              <div className="text-white text-[10px] font-mono mt-1">{count}</div>
-            )}
-          </>
-        )}
+        {blockType !== null && <ItemIcon type={blockType} count={count} />}
       </div>
     );
   };
@@ -195,10 +178,7 @@ const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
         className="w-12 h-12 border-2 border-yellow-400 bg-gray-700 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600"
         onClick={handleCraftButtonClick}
       >
-        <div className="text-white text-[8px] font-bold text-center">
-          {getBlockData(craftResult.result.type)?.name.slice(0, 8)}
-        </div>
-        <div className="text-white text-[10px] font-mono mt-1">{craftResult.result.count}</div>
+        <ItemIcon type={craftResult.result.type} count={craftResult.result.count} />
       </div>
     );
   };
@@ -245,11 +225,8 @@ const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
 
         {cursorItem && (
           <div className="fixed pointer-events-none z-[100]" style={{ left: '50%', top: '10%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-12 h-12 border-2 border-white bg-gray-700 flex flex-col items-center justify-center opacity-80">
-              <div className="text-white text-[8px] font-bold text-center">
-                {getBlockData(cursorItem.type)?.name.slice(0, 8) || 'Unknown'}
-              </div>
-              <div className="text-white text-[10px] font-mono mt-1">{cursorItem.count}</div>
+            <div className="w-12 h-12 border-2 border-white bg-gray-700 opacity-80">
+              <ItemIcon type={cursorItem.type} count={cursorItem.count} />
             </div>
           </div>
         )}

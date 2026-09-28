@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X, Package, Box } from 'lucide-react';
 import { BlockType, getBlockData, BLOCKS } from '../engine/blocks';
-import { useGame } from '../lib/stores/useGame';
+import ItemIcon from './ItemIcon';
+import { useGame, type ItemStack } from '../lib/stores/useGame';
 
 interface InventoryProps {
   onClose: () => void;
@@ -23,7 +24,7 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     const data = getBlockData(type);
     if (!data) return;
     
-    useGame.setState({ cursorItem: { type, count: data.maxStack } });
+    useGame.setState({ cursorItem: { type, count: data.maxStack ?? 64 } });
   };
 
   const handleSort = (e: React.MouseEvent) => {
@@ -37,10 +38,11 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     // Sort main inventory (slots 9 to 35)
     // 1. Group identical items
     for (let i = 9; i < 36; i++) {
-      if (newInventory[i] === null) continue;
-      const maxStack = getBlockData(newInventory[i])?.maxStack ?? 64;
+      const type = newInventory[i];
+      if (type === null) continue;
+      const maxStack = getBlockData(type)?.maxStack ?? 64;
       for (let j = i + 1; j < 36; j++) {
-        if (newInventory[j] === newInventory[i]) {
+        if (newInventory[j] === type) {
           const space = maxStack - newCounts[i];
           const toMove = Math.min(space, newCounts[j]);
           if (toMove > 0) {
@@ -53,10 +55,11 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
     }
     
     // 2. Extract and sort non-empty slots by ID
-    const items = [];
+    const items: ItemStack[] = [];
     for (let i = 9; i < 36; i++) {
-      if (newInventory[i] !== null) {
-        items.push({ type: newInventory[i], count: newCounts[i] });
+      const type = newInventory[i];
+      if (type !== null) {
+        items.push({ type, count: newCounts[i] });
         newInventory[i] = null;
         newCounts[i] = 0;
       }
@@ -201,16 +204,7 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
         onClick={(e) => handleSlotClick(e, slotIndex)}
         onContextMenu={(e) => handleSlotClick(e, slotIndex)}
       >
-        {blockType !== null && blockType !== BlockType.AIR && (
-          <>
-            <div className="text-white text-[8px] font-bold text-center">
-              {getBlockData(blockType)?.name.slice(0, 8) || 'Unknown'}
-            </div>
-            {count > 0 && (
-              <div className="text-white text-[10px] font-mono mt-1">{count}</div>
-            )}
-          </>
-        )}
+        {blockType !== null && <ItemIcon type={blockType} count={count} />}
       </div>
     );
   };
@@ -239,11 +233,8 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
 
         {cursorItem && (
           <div className="fixed pointer-events-none z-[100]" style={{ left: '50%', top: '10%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-12 h-12 border-2 border-white bg-gray-700 flex flex-col items-center justify-center opacity-80">
-              <div className="text-white text-[8px] font-bold text-center">
-                {getBlockData(cursorItem.type)?.name.slice(0, 8) || 'Unknown'}
-              </div>
-              <div className="text-white text-[10px] font-mono mt-1">{cursorItem.count}</div>
+            <div className="w-12 h-12 border-2 border-white bg-gray-700 opacity-80">
+              <ItemIcon type={cursorItem.type} count={cursorItem.count} />
             </div>
           </div>
         )}
