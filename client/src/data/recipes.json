@@ -1,38 +1,167 @@
 [
   {
     "id": "logs_to_planks",
-    "result": { "type": 5, "count": 4 },
-    "ingredients": [{ "type": 4, "count": 1 }],
-    "pattern": ["L"]
+    "result": {
+      "type": 5,
+      "count": 4
+    },
+    "pattern": [
+      "L"
+    ],
+    "legend": {
+      "L": 4
+    }
   },
   {
     "id": "planks_to_sticks",
-    "result": { "type": 4, "count": 4 },
-    "ingredients": [{ "type": 5, "count": 2 }],
-    "pattern": ["P", "P"]
-  },
-  {
-    "id": "cobble_pickaxe",
-    "result": { "type": 12, "count": 1 },
-    "ingredients": [
-      { "type": 12, "count": 3 },
-      { "type": 4, "count": 2 }
+    "result": {
+      "type": 17,
+      "count": 4
+    },
+    "pattern": [
+      "P",
+      "P"
     ],
-    "pattern": ["CCC", " S ", " S "]
+    "legend": {
+      "P": 5
+    }
   },
   {
     "id": "torch",
-    "result": { "type": 9, "count": 4 },
-    "ingredients": [
-      { "type": 12, "count": 1 },
-      { "type": 4, "count": 1 }
+    "result": {
+      "type": 9,
+      "count": 4
+    },
+    "pattern": [
+      "C",
+      "S"
     ],
-    "pattern": ["C", "S"]
+    "legend": {
+      "C": 12,
+      "S": 17
+    }
   },
   {
     "id": "door",
-    "result": { "type": 13, "count": 1 },
-    "ingredients": [{ "type": 5, "count": 6 }],
-    "pattern": ["PP", "PP", "PP"]
+    "result": {
+      "type": 13,
+      "count": 1
+    },
+    "pattern": [
+      "PP",
+      "PP",
+      "PP"
+    ],
+    "legend": {
+      "P": 5
+    }
+  },
+  {
+    "id": "wood_pickaxe",
+    "result": {
+      "type": 18,
+      "count": 1
+    },
+    "pattern": [
+      "PPP",
+      " S ",
+      " S "
+    ],
+    "legend": {
+      "P": 5,
+      "S": 17
+    }
+  },
+  {
+    "id": "wood_sword",
+    "result": {
+      "type": 19,
+      "count": 1
+    },
+    "pattern": [
+      "P",
+      "P",
+      "S"
+    ],
+    "legend": {
+      "P": 5,
+      "S": 17
+    }
+  },
+  {
+    "id": "wood_axe",
+    "result": {
+      "type": 20,
+      "count": 1
+    },
+    "pattern": [
+      "PP",
+      "PS",
+      " S"
+    ],
+    "legend": {
+      "P": 5,
+      "S": 17
+    }
+  },
+  {
+    "id": "wood_shovel",
+    "result": {
+      "type": 21,
+      "count": 1
+    },
+    "pattern": [
+      "P",
+      "S",
+      "S"
+    ],
+    "legend": {
+      "P": 5,
+      "S": 17
+    }
+  },
+  {
+    "id": "chest",
+    "result": {
+      "type": 22,
+      "count": 1
+    },
+    "pattern": [
+      "PPP",
+      "P P",
+      "PPP"
+    ],
+    "legend": {
+      "P": 5
+    }
+  },
+  {
+    "id": "crafting_table",
+    "result": {
+      "type": 25,
+      "count": 1
+    },
+    "pattern": [
+      "PP",
+      "PP"
+    ],
+    "legend": {
+      "P": 5
+    }
+  },
+  {
+    "id": "furnace",
+    "result": {
+      "type": 23,
+      "count": 1
+    },
+    "pattern": [
+      "CCC",
+      "C C",
+      "CCC"
+    ],
+    "legend": {
+      "C": 12
+    }
   }
 ]
