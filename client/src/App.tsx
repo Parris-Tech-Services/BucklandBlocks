@@ -19,6 +19,7 @@ import { gameInput } from "./engine/input";
 import { isGameplayActive, useSession } from "./engine/session";
 import { useGame } from "./lib/stores/useGame";
 import { cycleHotbarSlot } from "./engine/hotbar";
+import { menuKeyAction } from "./engine/menuKeys";
 import "@fontsource/inter";
 
 function Game() {
@@ -38,6 +39,32 @@ function Game() {
       target instanceof HTMLElement &&
       (target.isContentEditable || !!target.closest("input, textarea, select"));
 
+    // Close a menu opened from gameplay straight back into play, recapturing
+    // the mouse when possible (the same path for the E and C toggles).
+    const returnToGameplay = () => {
+      const cvs = document.querySelector("canvas");
+      if (!cvs) {
+        setMenu("pause");
+        return;
+      }
+      useSession.setState({ menu: null, error: null });
+      // Pointer lock is optional; gameplay continues without it. Newer
+      // browsers reject asynchronously, so handle both failure paths.
+      const unavailable = () =>
+        useSession.setState({
+          pointerLocked: false,
+          error: "Mouse capture is unavailable; continuing without captured mouse look.",
+        });
+      try {
+        const request = cvs.requestPointerLock();
+        if (request && typeof (request as PromiseLike<void>).then === "function") {
+          void Promise.resolve(request).catch(unavailable);
+        }
+      } catch {
+        unavailable();
+      }
+    };
+
     const down = (event: KeyboardEvent) => {
       if (editable(event.target)) return;
 
@@ -47,32 +74,15 @@ function Game() {
 
       if (event.repeat) return;
       const current = useSession.getState().menu;
+      const menuAction = menuKeyAction(event.code, current, isGameplayActive());
 
       if (event.code === "Escape") {
         event.preventDefault();
         pause();
-      } else if (
-        event.code === "KeyE" &&
-        (isGameplayActive() || current === "inventory")
-      ) {
+      } else if (menuAction) {
         event.preventDefault();
-        if (current === "inventory") {
-          const cvs = document.querySelector('canvas');
-          if (cvs) {
-            useSession.setState({ menu: null, error: null });
-            try { cvs.requestPointerLock(); } catch(e) {}
-          } else {
-            setMenu("pause");
-          }
-        } else {
-          setMenu("inventory");
-        }
-      } else if (
-        event.code === "KeyC" &&
-        (isGameplayActive() || current === "crafting")
-      ) {
-        event.preventDefault();
-        setMenu(current === "crafting" ? "pause" : "crafting");
+        if (menuAction.kind === "close") returnToGameplay();
+        else setMenu(menuAction.menu);
       } else if (/^Digit[1-9]$/.test(event.code) && isGameplayActive()) {
         window.dispatchEvent(
           new CustomEvent("hotbarSelect", {
