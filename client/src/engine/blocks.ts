@@ -16,6 +16,11 @@ export enum BlockType {
   DOOR_TOP = 14,
   WOOD,
   SKY,
+  STICK,
+  PICKAXE,
+  SWORD,
+  AXE,
+  SHOVEL,
 }
 
 export interface BlockData {
@@ -29,6 +34,8 @@ export interface BlockData {
   solid: boolean;
   toolRequired?: string;
   drops?: { id: BlockType; count: number }[];
+  isTool?: boolean;
+  toolType?: "pickaxe" | "axe" | "shovel" | "sword";
 }
 
 export const BLOCKS: Record<BlockType, BlockData> = {
@@ -85,6 +92,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
+    toolRequired: "axe",
     drops: [{ id: BlockType.WOOD_LOG, count: 1 }],
   },
   [BlockType.WOOD_PLANK]: {
@@ -96,6 +104,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
+    toolRequired: "axe",
     drops: [{ id: BlockType.WOOD_PLANK, count: 1 }],
   },
   [BlockType.LEAF]: {
@@ -161,6 +170,7 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     emissive: false,
     liquid: false,
     solid: true,
+    toolRequired: "shovel",
     drops: [{ id: BlockType.SAND, count: 1 }],
   },
   [BlockType.COBBLESTONE]: {
@@ -217,7 +227,66 @@ export const BLOCKS: Record<BlockType, BlockData> = {
     liquid: false,
     solid: false,
     drops: [],
-  }
+  },
+  [BlockType.STICK]: {
+    id: BlockType.STICK,
+    name: "Stick",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    isTool: false,
+  },
+  [BlockType.PICKAXE]: {
+    id: BlockType.PICKAXE,
+    name: "Wooden Pickaxe",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    isTool: true,
+    toolType: "pickaxe",
+  },
+  [BlockType.SWORD]: {
+    id: BlockType.SWORD,
+    name: "Wooden Sword",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    isTool: true,
+    toolType: "sword",
+  },
+  [BlockType.AXE]: {
+    id: BlockType.AXE,
+    name: "Wooden Axe",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    isTool: true,
+    toolType: "axe",
+  },
+  [BlockType.SHOVEL]: {
+    id: BlockType.SHOVEL,
+    name: "Wooden Shovel",
+    texture: "./textures/wood.jpg",
+    hardness: 0,
+    transparent: true,
+    emissive: false,
+    liquid: false,
+    solid: false,
+    isTool: true,
+    toolType: "shovel",
+  },
 };
 
 export function getBlockData(blockType: BlockType): BlockData {

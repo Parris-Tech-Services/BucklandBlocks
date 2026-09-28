@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { gameInput } from "./input";
 import { isGameplayActive, useSession } from "./session";
 import { performRaycast, type RaycastHit } from "./raycast";
-import { BlockType, getBlockDrops, isBlockSolid } from "./blocks";
+import { BlockType, getBlockData, getBlockDrops, isBlockSolid } from "./blocks";
 import { initialSave, useGame } from "../lib/stores/useGame";
 import {
   moveAxisWithCollision,
@@ -260,24 +260,36 @@ const Player: React.FC = () => {
     const now = Date.now();
 
     if (keys.mine && raycast && now - lastActionRef.current > 200) {
-      lastActionRef.current = now;
-
       const { x, y, z } = raycast.position;
       const blockType = raycast.blockType;
+      const targetData = getBlockData(blockType);
+      const heldData = inventory[selectedSlot] === null
+        ? null
+        : getBlockData(inventory[selectedSlot]!);
+      const hasRequiredTool = !targetData.toolRequired ||
+        heldData?.toolType === targetData.toolRequired;
 
-      setBlock(
-        Math.floor(x),
-        Math.floor(y),
-        Math.floor(z),
-        BlockType.AIR,
-      );
+      // Water is a fluid, not a voxel resource. It cannot be removed by
+      // ordinary mining, and required tools must be held for hard blocks.
+      if (blockType === BlockType.WATER || !hasRequiredTool) {
+        // Keep the target intact until the player selects the right tool.
+      } else {
+        lastActionRef.current = now;
 
-      const chunkX = Math.floor(Math.floor(x) / 16);
-      const chunkZ = Math.floor(Math.floor(z) / 16);
-      markChunkDirty(chunkX, chunkZ);
+        setBlock(
+          Math.floor(x),
+          Math.floor(y),
+          Math.floor(z),
+          BlockType.AIR,
+        );
 
-      const drops = getBlockDrops(blockType);
-      drops.forEach((drop) => addToInventory(drop.id, drop.count));
+        const chunkX = Math.floor(Math.floor(x) / 16);
+        const chunkZ = Math.floor(Math.floor(z) / 16);
+        markChunkDirty(chunkX, chunkZ);
+
+        const drops = getBlockDrops(blockType);
+        drops.forEach((drop) => addToInventory(drop.id, drop.count));
+      }
     }
 
     if (
@@ -289,7 +301,8 @@ const Player: React.FC = () => {
 
       if (
         selectedBlockType !== null &&
-        inventoryCounts[selectedSlot] > 0
+        inventoryCounts[selectedSlot] > 0 &&
+        !getBlockData(selectedBlockType).isTool
       ) {
         lastActionRef.current = now;
 

@@ -57,6 +57,14 @@ const initializeInventory = (): [(BlockType | null)[], number[]] => {
   counts[1] = 64;
   inventory[2] = BlockType.COBBLESTONE;
   counts[2] = 64;
+  inventory[3] = BlockType.PICKAXE;
+  counts[3] = 1;
+  inventory[4] = BlockType.AXE;
+  counts[4] = 1;
+  inventory[5] = BlockType.SHOVEL;
+  counts[5] = 1;
+  inventory[6] = BlockType.SWORD;
+  counts[6] = 1;
   
   return [inventory, counts];
 };
@@ -261,4 +269,3 @@ export const useGame = create<GameState>()(
     },
   };})
 );
-
