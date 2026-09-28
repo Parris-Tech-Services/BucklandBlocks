@@ -11,9 +11,15 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
         inventory: { slots: state.inventory, counts: state.inventoryCounts, selectedSlot: state.selectedSlot },
         gameTime: state.gameTime,
         chunks: Array.from(state.chunks, ([key, chunk]) => {
+          if (!chunk.dirty) return null;
           const [x, z] = key.split(',').map(Number);
           return { x, z, voxelData: chunk.voxelData, timestamp: Date.now() };
-        }) });
+        }).filter((chunk): chunk is {
+          x: number;
+          z: number;
+          voxelData: Uint8Array;
+          timestamp: number;
+        } => chunk !== null) });
       setMessage('World saved on this device.');
     } catch {
       setMessage('Save failed. Your previous save has not been replaced. Check browser storage space or access.');
