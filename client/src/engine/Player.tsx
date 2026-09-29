@@ -399,6 +399,8 @@ const Player: React.FC = () => {
       fallStartYRef.current = null;
     }
 
+    useGame.getState().collectNearbyItems(camera.position, PLAYER_HEIGHT);
+
     const raycast = performRaycast(
       camera.position,
       camera.getWorldDirection(new THREE.Vector3()),
