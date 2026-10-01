@@ -12,6 +12,8 @@ export const FEATURE_DEFAULTS = {
   // and passed a full end-to-end check on a deployed preview. Kill switch:
   // ?features=-inventorypanels shows the previous inventory screen.
   inventorypanels: true,
+  // Shared Parris UI is opt-in until preview/browser verification is approved.
+  parrisui: false,
 } satisfies Record<string, boolean>;
 
 export type Feature = keyof typeof FEATURE_DEFAULTS;
