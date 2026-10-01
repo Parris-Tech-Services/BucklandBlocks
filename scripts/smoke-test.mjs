@@ -44,6 +44,14 @@ try {
   });
 
   await page.goto(url, { waitUntil: "load" });
+  // Parris shared UI is a new integration and must remain off by default.
+  if (await page.locator('#parris-tools-launcher').count()) {
+    problems.push("Parris UI launcher rendered while parrisui feature flag is off");
+  }
+  if (await page.locator('script[data-parris-ui]').count()) {
+    problems.push("Parris UI adapter loaded while parrisui feature flag is off");
+  }
+
   const resume = page.getByRole("button", { name: /resume game/i });
   await resume.waitFor({ timeout: 30_000 });
   await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => /resume game/i.test(b.textContent ?? "") && !b.disabled), null, { timeout: 30_000 });
