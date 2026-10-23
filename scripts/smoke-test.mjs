@@ -44,7 +44,23 @@ try {
   });
 
   await page.goto(url, { waitUntil: "load" });
-  const resume = page.getByRole("button", { name: /resume game/i });
+  // Check all approved saved recordings and real click-driven playback.
+  const allClips=await page.evaluate(async()=>{
+    return await Promise.all(Array.from({length:20},(_,i)=>'VO'+String(61+i).padStart(3,'0')).map(async id=>{
+      const response=await fetch(new URL('./voice/'+id+'.mp3',location.href));
+      return {id,ok:response.ok,size:(await response.arrayBuffer()).byteLength};
+    }));
+  });
+  for(const clip of allClips)if(!clip.ok||clip.size<10_000)problems.push('Missing Buckland guide clip '+clip.id);
+  const voiceToggle=page.getByRole('button',{name:/Voice OFF|Voice ON/}).first();
+  await voiceToggle.waitFor({timeout:15_000});
+  if(await voiceToggle.getAttribute('aria-pressed')==='true')await voiceToggle.click();
+  const welcomeRequest=page.waitForRequest(r=>r.url().includes('/voice/VO061.mp3'),{timeout:10_000});
+  await page.getByRole('button',{name:'Voice OFF'}).click();
+  await welcomeRequest;
+  await page.getByRole('button',{name:'Voice ON'}).click();
+  await page.getByRole('button',{name:'Voice OFF'}).waitFor();
+    const resume = page.getByRole("button", { name: /resume game/i });
   await resume.waitFor({ timeout: 30_000 });
   await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => /resume game/i.test(b.textContent ?? "") && !b.disabled), null, { timeout: 30_000 });
   await resume.click();
