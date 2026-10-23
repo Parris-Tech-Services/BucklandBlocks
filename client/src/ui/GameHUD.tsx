@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BlockType, getBlockData } from "../engine/blocks";
 import { useGame } from "../lib/stores/useGame";
 import { useSession } from "../engine/session";
+import {useVoiceGuide} from "../lib/voice/voiceGuide";
 
 const GameHUD: React.FC = () => {
   // All data comes from the store (updated by the in-Canvas HooksBridge)
@@ -43,6 +44,7 @@ const GameHUD: React.FC = () => {
 
   const handleRespawn = () => {
     respawn();
+    useVoiceGuide.getState().playVoice('VO078',{once:true});
     window.dispatchEvent(new Event("playerRespawn"));
     // Pointer lock was released when the death menu opened. Return to Pause
     // so Resume can reacquire mouse capture through the tested path.
