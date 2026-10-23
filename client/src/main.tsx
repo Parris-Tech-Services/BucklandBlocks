@@ -1,6 +1,8 @@
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import { isFeatureOn } from "./engine/features";
+import { connectPortalAdapter } from "./utils/portalAdapter";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -17,3 +19,5 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </QueryClientProvider>
 );
+
+if (isFeatureOn("portals")) connectPortalAdapter();

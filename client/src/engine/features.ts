@@ -7,6 +7,8 @@
 // When a feature is ready for everyone, flip its default to true below.
 
 export const FEATURE_DEFAULTS = {
+  // Optional cross-game portal service must not become a startup dependency.
+  portals: false,
   // Equipment + 2x2 crafting inventory panels (PR #25). On by default as a
   // deliberate exception to "start off": it restores a screen Josh asked for
   // and passed a full end-to-end check on a deployed preview. Kill switch:
