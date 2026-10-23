@@ -3,6 +3,7 @@ import { initialSave, useGame } from '../lib/stores/useGame';
 import { deleteSave, readSave, writeSave } from '../engine/save';
 import VoiceGuideControls from './VoiceGuideControls';
 import {useVoiceGuide} from '../lib/voice/voiceGuide';
+import {isFeatureOn} from '../engine/features';
 
 export default function PauseMenu({ onClose, canResume = true }: { onClose: () => void; canResume?: boolean }) {
   const [message, setMessage] = useState<string | null>(initialSave.error);
@@ -52,9 +53,9 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
         <button disabled={!!initialSave.error || !canResume} onClick={save} className="w-full p-3 bg-gray-700 rounded disabled:opacity-50">Save World</button>
         <button onClick={load} className="w-full p-3 bg-gray-700 rounded">Load World</button>
         <button onClick={startNew} className="w-full p-3 bg-red-800 rounded">New World</button>
-        <button type="button" onClick={()=>useVoiceGuide.getState().playVoice('VO079',{preview:true})} className="w-full p-3 bg-gray-700 rounded">Finish for now (remember to save)</button>
+        {isFeatureOn('voiceguide')&&<button type="button" onClick={()=>useVoiceGuide.getState().playVoice('VO079',{preview:true})} className="w-full p-3 bg-gray-700 rounded">Finish for now (remember to save)</button>}
       </div>
-      <VoiceGuideControls />
+      {isFeatureOn('voiceguide')&&<VoiceGuideControls />}
       {message && <p role="status" className="mt-4">{message}</p>}
     </div>
   </div>;

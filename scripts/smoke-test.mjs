@@ -43,7 +43,9 @@ try {
     if (res.status() >= 400 && !res.url().endsWith("/favicon.ico")) problems.push(`HTTP ${res.status()}: ${res.url()}`);
   });
 
-  await page.goto(url, { waitUntil: "load" });
+  const voiceUrl=new URL(url);
+  voiceUrl.searchParams.set("features","voiceguide");
+  await page.goto(voiceUrl.toString(), { waitUntil: "load" });
   // Check all approved saved recordings and real click-driven playback.
   const allClips=await page.evaluate(async()=>{
     return await Promise.all(Array.from({length:20},(_,i)=>'VO'+String(61+i).padStart(3,'0')).map(async id=>{
@@ -93,6 +95,14 @@ try {
 
   await page.keyboard.press("KeyE");
   await page.waitForTimeout(3000);
+
+  // Fail-open kill switch must really hide the new feature.
+  const disabledPage=await browser.newPage();
+  const disabledUrl=new URL(url);disabledUrl.searchParams.set("features","none");
+  await disabledPage.goto(disabledUrl.toString(),{waitUntil:"load"});
+  await disabledPage.getByRole("button",{name:/resume game/i}).waitFor({timeout:30_000});
+  if(await disabledPage.getByRole("button",{name:/Voice ON|Voice OFF/}).count())problems.push("Voice guide ignored ?features=none");
+  await disabledPage.close();
 
   if (await page.getByText(/something went wrong|reload/i).first().isVisible().catch(() => false)) {
     problems.push("error screen is visible");

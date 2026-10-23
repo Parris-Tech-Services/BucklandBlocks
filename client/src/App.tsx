@@ -30,6 +30,7 @@ function Game() {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(()=>{
+    if(!isFeatureOn('voiceguide'))return;
     const removeGame=useGame.subscribe((now,before)=>{
       if(now.health<before.health){if(now.health<=6)emitVoiceEvent('VO067');else emitVoiceEvent('VO066')}
       if(before.gameTime<16000&&now.gameTime>=16000)emitVoiceEvent('VO065');
@@ -282,7 +283,7 @@ function Game() {
       </Canvas>
 
       <GameHUD />
-      <VoiceGuideCaption />
+      {isFeatureOn('voiceguide')&&<VoiceGuideCaption />}
 
       <div hidden={menu !== "inventory"}>
         {isFeatureOn("inventorypanels") ? <Inventory onClose={resume} /> : <LegacyInventory onClose={resume} />}

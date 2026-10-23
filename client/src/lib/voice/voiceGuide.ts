@@ -1,5 +1,6 @@
 import {create} from 'zustand';
 import {VOICE_LINES,VOICE_SRC,ALL_VOICE_IDS,type VoiceId} from './voiceCatalogue';
+import {isFeatureOn} from '../../engine/features';
 type Options={once?:boolean;preview?:boolean};
 type VoiceState={enabled:boolean;volume:number;current:VoiceId|null;error:string|null;setEnabled:(v:boolean)=>void;setVolume:(v:number)=>void;playVoice:(id:VoiceId,options?:Options)=>boolean;stopVoice:()=>void};
 const key='buckland_voice_settings_v1';
@@ -9,11 +10,11 @@ let active:HTMLAudioElement|null=null,token=0;
 const played=new Set<VoiceId>();let waiting:{id:VoiceId;once:boolean}[]=[];
 export const useVoiceGuide=create<VoiceState>((set,get)=>({
  enabled:prefs.enabled,volume:prefs.volume,current:null,error:null,
- stopVoice:()=>{token++;waiting=[];if(active){active.onended=null;active.onerror=null;active.pause();active=null}set({current:null})},
+ stopVoice:()=>{token++;waiting=[];if(active){active.onended=null;active.onerror=null;active.pause();active=null}set({current:null,error:null})},
  setEnabled:enabled=>{if(!enabled)get().stopVoice();set({enabled,error:null});persist(enabled,get().volume)},
  setVolume:volume=>{const v=Math.max(0,Math.min(1,volume));if(active)active.volume=v;set({volume:v});persist(get().enabled,v)},
  playVoice:(id,options={})=>{
-  if(!get().enabled||!ALL_VOICE_IDS.includes(id))return false;
+  if(!isFeatureOn('voiceguide')||!get().enabled||!ALL_VOICE_IDS.includes(id))return false;
   const once=options.once===true;
   if(once&&(played.has(id)||waiting.some(x=>x.id===id)))return false;
   if(active&&!options.preview){if(waiting.length>=3)return false;waiting.push({id,once});return true}
@@ -30,4 +31,4 @@ export const useVoiceGuide=create<VoiceState>((set,get)=>({
   return true;
  }
 }));
-export const emitVoiceEvent=(id:VoiceId)=>VOICE_LINES[id].automatic?useVoiceGuide.getState().playVoice(id,{once:true}):false;
+export const emitVoiceEvent=(id:VoiceId)=>isFeatureOn('voiceguide')&&VOICE_LINES[id].automatic?useVoiceGuide.getState().playVoice(id,{once:true}):false;

@@ -1,8 +1,10 @@
 import {useVoiceGuide} from '../lib/voice/voiceGuide';
 import {ALL_VOICE_IDS,VOICE_LINES} from '../lib/voice/voiceCatalogue';
+import {isFeatureOn} from '../engine/features';
 export default function VoiceGuideControls(){
  const {enabled,volume,current,error,setEnabled,setVolume,playVoice,stopVoice}=useVoiceGuide();
  const toggle=()=>{const on=!enabled;setEnabled(on);if(on)useVoiceGuide.getState().playVoice('VO061',{once:true})};
+ if(!isFeatureOn('voiceguide'))return null;
  return <section aria-label="Voice guide settings" className="mt-4 rounded-lg border border-amber-700 bg-gray-900 p-3">
  <div className="flex items-center justify-between gap-2"><strong className="text-sm">Recorded field guide</strong>
  <button type="button" aria-pressed={enabled} className="rounded bg-amber-700 px-3 py-2 text-sm" onClick={toggle}>{enabled?'Voice ON':'Voice OFF'}</button></div>
