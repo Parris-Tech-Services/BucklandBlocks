@@ -43,8 +43,26 @@ try {
     if (res.status() >= 400 && !res.url().endsWith("/favicon.ico")) problems.push(`HTTP ${res.status()}: ${res.url()}`);
   });
 
-  await page.goto(url, { waitUntil: "load" });
-  const resume = page.getByRole("button", { name: /resume game/i });
+  const voiceUrl=new URL(url);
+  voiceUrl.searchParams.set("features","voiceguide");
+  await page.goto(voiceUrl.toString(), { waitUntil: "load" });
+  // Check all approved saved recordings and real click-driven playback.
+  const allClips=await page.evaluate(async()=>{
+    return await Promise.all(Array.from({length:20},(_,i)=>'VO'+String(61+i).padStart(3,'0')).map(async id=>{
+      const response=await fetch(new URL('./voice/'+id+'.mp3',location.href));
+      return {id,ok:response.ok,size:(await response.arrayBuffer()).byteLength};
+    }));
+  });
+  for(const clip of allClips)if(!clip.ok||clip.size<10_000)problems.push('Missing Buckland guide clip '+clip.id);
+  const voiceToggle=page.getByRole('button',{name:/Voice OFF|Voice ON/}).first();
+  await voiceToggle.waitFor({timeout:15_000});
+  if(await voiceToggle.getAttribute('aria-pressed')==='true')await voiceToggle.click();
+  const welcomeRequest=page.waitForRequest(r=>r.url().includes('/voice/VO061.mp3'),{timeout:10_000});
+  await page.getByRole('button',{name:'Voice OFF'}).click();
+  await welcomeRequest;
+  await page.getByRole('button',{name:'Voice ON'}).click();
+  await page.getByRole('button',{name:'Voice OFF'}).waitFor();
+    const resume = page.getByRole("button", { name: /resume game/i });
   await resume.waitFor({ timeout: 30_000 });
   await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => /resume game/i.test(b.textContent ?? "") && !b.disabled), null, { timeout: 30_000 });
   await resume.click();
@@ -77,6 +95,14 @@ try {
 
   await page.keyboard.press("KeyE");
   await page.waitForTimeout(3000);
+
+  // Fail-open kill switch must really hide the new feature.
+  const disabledPage=await browser.newPage();
+  const disabledUrl=new URL(url);disabledUrl.searchParams.set("features","none");
+  await disabledPage.goto(disabledUrl.toString(),{waitUntil:"load"});
+  await disabledPage.getByRole("button",{name:/resume game/i}).waitFor({timeout:30_000});
+  if(await disabledPage.getByRole("button",{name:/Voice ON|Voice OFF/}).count())problems.push("Voice guide ignored ?features=none");
+  await disabledPage.close();
 
   if (await page.getByText(/something went wrong|reload/i).first().isVisible().catch(() => false)) {
     problems.push("error screen is visible");
