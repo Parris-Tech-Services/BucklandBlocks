@@ -65,3 +65,5 @@ _Buckland Blocks scope: do not invent audio-to-event matches. Review actual game
 
 <!-- NO_COST_SUBTASKS_V1 -->
 **Ownership:** `[AI]` = connected-tool implementation and testing. `[YOU]` = only essential account/device access. No paid services, no unsafe visibility changes. See the master list for evidence requirements.
+
+**Review gate:** This documentation-only PR must still satisfy the repository's required public-repository `quality` check. No production/audio runtime changes are included.
