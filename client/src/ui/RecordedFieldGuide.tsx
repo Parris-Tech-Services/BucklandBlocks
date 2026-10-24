@@ -27,6 +27,8 @@ export default function RecordedFieldGuide({clipId, enabled}:{clipId:BucklandGui
     const old=audio.current;
     audio.current=null;
     if(old){old.onended=null;old.onerror=null;old.pause()}
+    setPlaying(false);
+    setStatus('');
     // Different session event or muted guide must stop the previous take.
     // We deliberately never auto-play the new recording.
   },[clipId,enabled]);
