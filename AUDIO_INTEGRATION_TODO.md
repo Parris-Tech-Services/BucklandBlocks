@@ -20,3 +20,5 @@
 - [ ] **048** [P2] Publish a central audit showing clip ID, voice, source, destination, gameplay trigger, review status and test outcome
 
 _Buckland Blocks scope: do not invent audio-to-event matches. Review actual gameplay first, integrate only suitable audio, and test phone and desktop experience before claiming complete._
+
+**Review gate:** This checklist should land on `main` only after the repository's required `quality` check passes. A documentation change does not certify gameplay or audio integration.
