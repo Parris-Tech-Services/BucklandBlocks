@@ -5,17 +5,18 @@
   "license": "MIT",
   "scripts": {
     "dev": "tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npm run prepare:voices && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "test": "tsx --test client/src/engine/*.test.ts client/src/utils/*.test.ts client/src/ui/*.test.ts",
     "verify:release": "node scripts/verify-release.mjs",
     "db:push": "drizzle-kit push",
-    "build:client": "vite build",
+    "build:client": "npm run prepare:voices && vite build",
     "vercel-build": "npm run build:client",
     "lint": "eslint client/src",
     "smoke": "node scripts/smoke-test.mjs",
-    "verify": "npm run check && npm run lint && npm test && npm run build:client && npm run verify:release && npm run smoke"
+    "verify": "npm run check && npm run lint && npm test && npm run build:client && npm run verify:release && npm run smoke",
+    "prepare:voices": "node scripts/prepare-voice-clips.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.5",
