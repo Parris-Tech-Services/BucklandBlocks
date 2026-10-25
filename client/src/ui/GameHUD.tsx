@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { BlockType, getBlockData } from "../engine/blocks";
 import { useGame } from "../lib/stores/useGame";
+import ItemIcon from "./ItemIcon";
+import { isFeatureOn } from "../engine/features";
 import { useSession } from "../engine/session";
 
 const GameHUD: React.FC = () => {
@@ -166,7 +168,7 @@ const GameHUD: React.FC = () => {
                   isSelected ? "border-white bg-gray-700" : "border-gray-500 bg-gray-800"
                 }`}
               >
-                {blockType !== null && blockType !== BlockType.AIR && (
+                {blockType !== null && (isFeatureOn("itemicons") ? <ItemIcon type={blockType} count={count} /> : blockType !== BlockType.AIR && (
                   <>
                     <img src={getBlockData(blockType)?.texture} className="w-full h-full object-contain pixelated p-1" alt="" />
                     <div className="absolute top-0 left-0 right-0 truncate bg-black/60 px-0.5 text-[7px] font-bold leading-3" style={{ textShadow: '1px 1px 0 #000' }}>
@@ -174,7 +176,7 @@ const GameHUD: React.FC = () => {
                     </div>
                     <div className="absolute bottom-0 right-1 text-[10px] font-bold font-mono" style={{ textShadow: '1px 1px 0 #000' }}>{count > 0 ? count : ""}</div>
                   </>
-                )}
+                ))}
                 <div className="absolute bottom-0 right-0 text-[8px] text-gray-400">
                   {i + 1}
                 </div>
