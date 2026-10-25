@@ -6,6 +6,14 @@ import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
 import { createWorldSeed, normalizeWorldSeed } from "../../engine/worldSeed";
+import {
+  droppedItemPositionFor,
+  inventorySpaceFor,
+  isWithinPickupReach,
+  SPILLED_PICKUP_DELAY_MS,
+  THROW_DISTANCE,
+  THROWN_PICKUP_DELAY_MS,
+} from "../../engine/pickup";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -35,6 +43,8 @@ export interface DroppedItem {
   type: BlockType;
   count: number;
   position: THREE.Vector3;
+  /** Date.now() time from which walking over the item picks it up. */
+  pickupAt: number;
 }
 
 interface GameState {
@@ -63,6 +73,8 @@ interface GameState {
   droppedItems: DroppedItem[];
   addDroppedItem: (type: BlockType, count: number, position: THREE.Vector3) => void;
   removeDroppedItem: (id: string) => void;
+  /** Moves touching, ready items into the inventory; returns how many were taken. */
+  collectNearbyItems: (eye: THREE.Vector3, playerHeight: number, now?: number) => number;
   selectedSlot: number;
   // World
   chunks: Map<string, ChunkData>;
@@ -266,6 +278,26 @@ export const useGame = create<GameState>()(
     removeDroppedItem: (id) => set((state) => ({ 
       droppedItems: state.droppedItems.filter(item => item.id !== id) 
     })),
+    collectNearbyItems: (eye, playerHeight, now = Date.now()) => {
+      let collected = 0;
+      for (const item of get().droppedItems) {
+        if (now < item.pickupAt || !isWithinPickupReach(item.position, eye, playerHeight)) continue;
+
+        const { inventory, inventoryCounts } = get();
+        const maxStack = getBlockData(item.type)?.maxStack ?? 64;
+        const taken = Math.min(item.count, inventorySpaceFor(inventory, inventoryCounts, item.type, maxStack));
+        if (taken <= 0) continue;
+
+        get().addToInventory(item.type, taken);
+        collected += taken;
+        set((state) => ({
+          droppedItems: taken === item.count
+            ? state.droppedItems.filter((i) => i.id !== item.id)
+            : state.droppedItems.map((i) => (i.id === item.id ? { ...i, count: i.count - taken } : i)),
+        }));
+      }
+      return collected;
+    },
     addDroppedItem: (type, count, position) => set((state) => {
       // Find nearby items of same type to merge
       const mergeDist = 2.0;
@@ -276,7 +308,9 @@ export const useGame = create<GameState>()(
       if (existing) {
         return {
           droppedItems: state.droppedItems.map(i => 
-            i.id === existing.id ? { ...i, count: i.count + count } : i
+            i.id === existing.id
+              ? { ...i, count: i.count + count, pickupAt: Math.max(i.pickupAt, Date.now() + SPILLED_PICKUP_DELAY_MS) }
+              : i
           )
         };
       }
@@ -284,7 +318,13 @@ export const useGame = create<GameState>()(
       return {
         droppedItems: [
           ...state.droppedItems, 
-          { id: Math.random().toString(36).substring(7), type, count, position: position.clone() }
+          {
+            id: Math.random().toString(36).substring(7),
+            type,
+            count,
+            position: position.clone(),
+            pickupAt: Date.now() + SPILLED_PICKUP_DELAY_MS,
+          }
         ]
       };
     }),
@@ -358,11 +398,10 @@ export const useGame = create<GameState>()(
           -Math.sin(yaw),
           0,
           -Math.cos(yaw),
-        ).multiplyScalar(1.25);
-        const position = state.playerPosition
-          .clone()
-          .add(forward)
-          .add(new THREE.Vector3(0, -0.8, 0));
+        ).multiplyScalar(THROW_DISTANCE);
+        const position = droppedItemPositionFor(
+          state.playerPosition.clone().add(forward).add(new THREE.Vector3(0, -0.55, 0)),
+        );
 
         return {
           inventory,
@@ -374,6 +413,7 @@ export const useGame = create<GameState>()(
               type: selectedType,
               count: drop.dropCount,
               position,
+              pickupAt: Date.now() + THROWN_PICKUP_DELAY_MS,
             },
           ],
         };
