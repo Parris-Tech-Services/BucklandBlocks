@@ -3,6 +3,10 @@ export interface ChunkCoord {
   z: number;
 }
 
+export interface StreamedChunkState {
+  dirty: boolean;
+}
+
 export const MIN_VIEW_DISTANCE = 1;
 export const MAX_VIEW_DISTANCE = 4;
 export const CHUNK_GENERATION_BATCH = 2;
@@ -34,4 +38,17 @@ export function orderedChunkCoords(
   });
 
   return coords;
+}
+
+/**
+ * Return only clean chunks that are outside the active render window.
+ * Modified chunks stay resident so a later save can still persist edits.
+ */
+export function cleanChunkKeysToUnload(
+  chunks: ReadonlyMap<string, StreamedChunkState>,
+  keepKeys: ReadonlySet<string>,
+): string[] {
+  return Array.from(chunks, ([key, chunk]) => ({ key, chunk }))
+    .filter(({ key, chunk }) => !keepKeys.has(key) && !chunk.dirty)
+    .map(({ key }) => key);
 }
