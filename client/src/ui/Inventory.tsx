@@ -4,6 +4,7 @@ import { BlockType, getBlockData } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
 import { quickMoveSlot } from '../engine/inventory';
 import recipesData from '../data/recipes.json';
+import { emitVoiceEvent } from '../lib/voice/voiceGuide';
 
 interface InventoryProps {
   onClose: () => void;
@@ -214,6 +215,9 @@ const Inventory: React.FC<InventoryProps> = ({ onClose }) => {
         ? { ...nextCursor, count: nextCursor.count + craftResult.result.count }
         : { type: craftResult.result.type, count: craftResult.result.count },
     });
+    // Only announce a genuine completed craft, after the result was placed.
+    // Early returns for incompatible/full cursor must never claim success.
+    emitVoiceEvent('VO071');
   };
 
   useEffect(() => {
