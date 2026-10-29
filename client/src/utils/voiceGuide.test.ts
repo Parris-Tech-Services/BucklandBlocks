@@ -26,3 +26,9 @@ test('uses existing build-time verified voices path and keeps unimplemented even
   assert.ok(prep.includes("client/public/voices"));
   for(const id of ['VO073','VO074','VO077','VO079','VO080'] as const)assert.equal(VOICE_LINES[id].automatic,false);
 });
+
+test('mined-material recorded success requires an actually accepted item',()=>{
+  const player=readFileSync('client/src/engine/Player.tsx','utf8');
+  assert.ok(player.includes("if (remaining < drop.count) emitVoiceEvent('VO070')"));
+  assert.ok(!player.includes("if(drops.length>0)emitVoiceEvent('VO070')"));
+});

@@ -456,9 +456,10 @@ const Player: React.FC = () => {
       );
 
       const drops = getBlockDrops(blockType);
-      if(drops.length>0)emitVoiceEvent('VO070');
       drops.forEach((drop) => {
         const remaining = addToInventory(drop.id, drop.count);
+        // A mined block is not collected when the inventory rejected every drop.
+        if (remaining < drop.count) emitVoiceEvent('VO070');
         if (remaining > 0) {
           addDroppedItem(
             drop.id,
