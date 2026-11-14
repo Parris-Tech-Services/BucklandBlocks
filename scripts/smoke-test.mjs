@@ -57,9 +57,23 @@ try {
   const voiceToggle=page.getByRole('button',{name:/Voice OFF|Voice ON/}).first();
   await voiceToggle.waitFor({timeout:15_000});
   if(await voiceToggle.getAttribute('aria-pressed')==='true')await voiceToggle.click();
+  // A request alone does not prove playback (preload can fetch a clip that never
+  // decodes or plays), so track every media element and require real progress.
+  await page.evaluate(()=>{
+    const seen=window.__bbAudio=[];
+    const play=HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play=function(...args){
+      seen.push(this);
+      return play.apply(this,args);
+    };
+  });
   const welcomeRequest=page.waitForRequest(r=>r.url().includes('/voices/VO061.mp3'),{timeout:10_000});
   await page.getByRole('button',{name:'Voice OFF'}).click();
   await welcomeRequest;
+  await page.waitForFunction(()=>window.__bbAudio.some(a=>a.src.includes('/voices/VO061.mp3')&&!a.error&&!a.paused&&a.currentTime>0),null,{timeout:15_000})
+    .catch(()=>problems.push('Welcome guide clip VO061 never advanced during playback'));
+  const playbackErrors=await page.evaluate(()=>window.__bbAudio.filter(a=>a.error).map(a=>a.src));
+  for(const src of playbackErrors)problems.push('Guide clip failed to decode or play: '+src);
   await page.getByRole('button',{name:'Voice ON'}).click();
   await page.getByRole('button',{name:'Voice OFF'}).waitFor();
     const resume = page.getByRole("button", { name: /resume game/i });
