@@ -61,3 +61,24 @@ test('starting exactly on a voxel boundary does not skip the adjacent block', ()
   assert.ok(hit, 'expected a hit starting from an exact voxel boundary');
   assert.equal(hit!.position.x, 1);
 });
+
+// Water is not a target: a player standing in a lake must still be able to
+// aim at the lake bed, and water must not block the view of blocks behind it.
+test('water is aimed through, not targeted', () => {
+  const getBlock = (x: number, y: number, z: number): BlockType => {
+    if (x === 0 && z === 0 && y === 60) return BlockType.SAND;
+    if (x === 0 && z === 0 && y > 60 && y <= 64) return BlockType.WATER;
+    return BlockType.AIR;
+  };
+  // Camera inside the water column, looking straight down.
+  const hit = performRaycast(new THREE.Vector3(0.5, 63.5, 0.5), new THREE.Vector3(0, -1, 0), 5, getBlock);
+  assert.ok(hit, 'expected to hit the lake bed');
+  assert.equal(hit!.blockType, BlockType.SAND);
+  assert.equal(hit!.position.y, 60);
+  assert.equal(hit!.normal.y, 1);
+});
+
+test('a ray through only water hits nothing', () => {
+  const getBlock = (): BlockType => BlockType.WATER;
+  assert.equal(performRaycast(new THREE.Vector3(0.5, 0.5, 0.5), new THREE.Vector3(1, 0, 0), 5, getBlock), null);
+});
