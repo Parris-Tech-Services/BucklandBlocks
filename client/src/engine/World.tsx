@@ -10,7 +10,7 @@ import { useSession } from "./session";
 import { CHUNK_GENERATION_BATCH, orderedChunkCoords } from "./chunkStreaming";
 
 const CHUNK_SIZE = { x: 16, y: 128, z: 16 };
-const STARTING_ADDRESS = "53 Buckland Street, Epsom VIC 3551, Australia";
+const STARTING_ADDRESS = "Buckland Street, Epsom VIC 3551, Australia";
 const OSM_ENABLED = import.meta.env.VITE_ENABLE_OSM === "true";
 
 // Keep the initial static-deployment workload small enough for ordinary browsers.

@@ -10,54 +10,69 @@
 
 - [ ] **036** [P2] Finish Buckland Blocks integration where recordings suit its gameplay
   - [x] [AI] Verify Buckland Blocks PR #38 merged; do not mistake merged source for playable audio (confirmed 2026-10-24).
-  - [ ] [AI] Inspect current merged code for real game events and suitable supplied recording mappings.
-  - [ ] [AI] Run `npm run verify` (`check`, `lint`, tests, client build, release verify, smoke); fix regressions.
-  - [ ] [AI] Playtest the merged game's audio, mute, save/reload and controls in browser and deployed site before checking this task.
+  - [ ] **TASK-00148** [AI] Inspect current merged code for real game events and suitable supplied recording mappings.
+  - [ ] **TASK-00149** [AI] Run `npm run verify` (`check`, `lint`, tests, client build, release verify, smoke); fix regressions.
+  - [ ] **TASK-00150** [AI] Playtest the merged game's audio, mute, save/reload and controls in browser and deployed site before checking this task.
 - [ ] **040** [P2] Audit voice consistency, pronunciation, volume, pauses and audio quality across all characters
-  - [ ] [AI] Measure loudness, peak, duration and leading/trailing silence for every approved clip using open-source tools.
-  - [ ] [AI] Flag speaker changes, clipped audio, pronunciation errors and long pauses for listening review.
-  - [ ] [AI] Apply non-destructive free gain/trim normalisation only with before/after hashes and source preserved.
-  - [ ] [AI] Test representative character clips in the actual app/game playback mix.
+  - [ ] **TASK-00152** [AI] Measure loudness, peak, duration and leading/trailing silence for every approved clip using open-source tools.
+  - [ ] **TASK-00153** [AI] Flag speaker changes, clipped audio, pronunciation errors and long pauses for listening review.
+  - [ ] **TASK-00154** [AI] Apply non-destructive free gain/trim normalisation only with before/after hashes and source preserved.
+  - [ ] **TASK-00155** [AI] Test representative character clips in the actual app/game playback mix.
 - [ ] **041** [P2] Check integrity, captions, wrong-file matches and broken URLs for each recording
-  - [ ] [AI] Generate a canonical ID→speaker→caption→URL→SHA-256 matrix with no duplicates.
-  - [ ] [AI] Validate all manifest references and content type/length, and audit caption versus text metadata.
-  - [ ] [AI] Test fail-fast behaviour for swapped voice files, 404, CORS and corrupt ZIP; store report.
-  - [ ] [AI] Do not close until all required clips in the specified scope pass.
+  - [ ] **TASK-00157** [AI] Generate a canonical ID→speaker→caption→URL→SHA-256 matrix with no duplicates.
+  - [ ] **TASK-00158** [AI] Validate all manifest references and content type/length, and audit caption versus text metadata.
+  - [ ] **TASK-00159** [AI] Test fail-fast behaviour for swapped voice files, 404, CORS and corrupt ZIP; store report.
+  - [ ] **TASK-00160** [AI] Do not close until all required clips in the specified scope pass.
 - [ ] **042** [P2] Verify no overlapping audio, autoplay problems, stuck players or missing stop controls
-  - [ ] [AI] Enumerate distinct media engines per app and document precedence, pause and stop rules.
-  - [ ] [AI] Add a repeat-tap/switch/close stress test that detects overlapping voices or hanging player state.
-  - [ ] [AI] Verify no autoplay without user gesture and stop when leaving game/dialogue.
-  - [ ] [AI] Confirm screen-reader announcements remain clear when an audio error occurs.
+  - [ ] **TASK-00162** [AI] Enumerate distinct media engines per app and document precedence, pause and stop rules.
+  - [ ] **TASK-00163** [AI] Add a repeat-tap/switch/close stress test that detects overlapping voices or hanging player state.
+  - [ ] **TASK-00164** [AI] Verify no autoplay without user gesture and stop when leaving game/dialogue.
+  - [ ] **TASK-00165** [AI] Confirm screen-reader announcements remain clear when an audio error occurs.
 - [ ] **043** [P2] Check loading performance and avoid unnecessarily downloading hundreds of recordings on mobile data
-  - [ ] [AI] Record startup/network bytes and lazy-load timing on a throttled simulated mobile connection.
-  - [ ] [AI] Ensure packs download on explicit interaction, cache selectively and respect audio settings.
-  - [ ] [AI] Verify bundles do not fetch all 300 clips on every page load or exhaust storage.
-  - [ ] [AI] Add performance budgets and compare measurements after optimisation.
+  - [ ] **TASK-00167** [AI] Record startup/network bytes and lazy-load timing on a throttled simulated mobile connection.
+  - [ ] **TASK-00168** [AI] Ensure packs download on explicit interaction, cache selectively and respect audio settings.
+  - [ ] **TASK-00169** [AI] Verify bundles do not fetch all 300 clips on every page load or exhaust storage.
+  - [ ] **TASK-00170** [AI] Add performance budgets and compare measurements after optimisation.
 - [ ] **044** [P2] Test fallback and retry behaviour without unexpected ElevenLabs API calls or costs
-  - [ ] [AI] Simulate offline, rate limits, 404, timeout, CORS denial and decode failure for every playback API.
-  - [ ] [AI] Assert graceful retry/disabled control with accurate voice source label.
-  - [ ] [AI] Log outbound request domains and prove no unplanned ElevenLabs/paid API calls.
-  - [ ] [AI] Preserve working offline alternatives only where approved, with no disguised device TTS.
+  - [ ] **TASK-00172** [AI] Simulate offline, rate limits, 404, timeout, CORS denial and decode failure for every playback API.
+  - [ ] **TASK-00173** [AI] Assert graceful retry/disabled control with accurate voice source label.
+  - [ ] **TASK-00174** [AI] Log outbound request domains and prove no unplanned ElevenLabs/paid API calls.
+  - [ ] **TASK-00175** [AI] Preserve working offline alternatives only where approved, with no disguised device TTS.
 - [ ] **045** [P2] Check accessibility, keyboard controls, reduced-motion preferences and screen-reader labels
-  - [ ] [AI] Run automated accessibility assertions for labels, focus, aria-pressed/status and heading structure.
-  - [ ] [AI] Test keyboard-only controls and switch to reduced-motion mode where relevant.
-  - [ ] [AI] Inspect mobile hit targets and long translated/recorded captions for overflow.
-  - [ ] [AI] Retest screen-reader relevant semantics after fixes.
+  - [ ] **TASK-00177** [AI] Run automated accessibility assertions for labels, focus, aria-pressed/status and heading structure.
+  - [ ] **TASK-00178** [AI] Test keyboard-only controls and switch to reduced-motion mode where relevant.
+  - [ ] **TASK-00179** [AI] Inspect mobile hit targets and long translated/recorded captions for overflow.
+  - [ ] **TASK-00180** [AI] Retest screen-reader relevant semantics after fixes.
 - [ ] **046** [P2] Run project builds, automated tests, real-browser journeys and production smoke tests
-  - [ ] [AI] Record per-app build, unit, integration, browser and deployed smoke commands in a single evidence matrix.
-  - [ ] [AI] Run lowest-cost tests first, then real browser journeys (Chrome mobile/desktop) without generating speech.
-  - [ ] [AI] Gate deployment on the relevant tests; attach SHA, exit logs, network/audio proof and URL.
-  - [ ] [AI] Distinguish an independent test from GitHub Actions execution and never claim CI green when runner was blocked.
+  - [ ] **TASK-00182** [AI] Record per-app build, unit, integration, browser and deployed smoke commands in a single evidence matrix.
+  - [ ] **TASK-00183** [AI] Run lowest-cost tests first, then real browser journeys (Chrome mobile/desktop) without generating speech.
+  - [ ] **TASK-00184** [AI] Gate deployment on the relevant tests; attach SHA, exit logs, network/audio proof and URL.
+  - [ ] **TASK-00185** [AI] Distinguish an independent test from GitHub Actions execution and never claim CI green when runner was blocked.
 - [ ] **047** [P2] Confirm save/load, offline support and core gameplay remain unchanged where audio was added
-  - [ ] [AI] Snapshot test saves/progress before audio features and verify backwards-compatible restores.
-  - [ ] [AI] Test offline startup and cached/missing audio without breaking gameplay, exercise tracking or school-safe app features.
-  - [ ] [AI] Check changing voice settings does not change game data, achievements or scores.
-  - [ ] [AI] Perform a production upgrade/reload regression on each affected app.
+  - [ ] **TASK-00187** [AI] Snapshot test saves/progress before audio features and verify backwards-compatible restores.
+  - [ ] **TASK-00188** [AI] Test offline startup and cached/missing audio without breaking gameplay, exercise tracking or school-safe app features.
+  - [ ] **TASK-00189** [AI] Check changing voice settings does not change game data, achievements or scores.
+  - [ ] **TASK-00190** [AI] Perform a production upgrade/reload regression on each affected app.
 - [ ] **048** [P2] Publish a central audit showing clip ID, voice, source, destination, gameplay trigger, review status and test outcome
-  - [ ] [AI] Consolidate all accessible audio manifests into one versioned inventory with ID, source, speaker, text, hash, game, trigger and deployed URL.
-  - [ ] [AI] Link QA evidence (CI/build/browser/devices), confidence level, review status and unresolved blockers per clip.
-  - [ ] [AI] Publish a machine-readable CSV/JSON and human audit in VoiceBank with source references.
-  - [ ] [AI] Reconcile all 48 task checkboxes from actual proof; leave missing/private/inaccessible items explicitly OPEN.
+  - [ ] **TASK-00192** [AI] Consolidate all accessible audio manifests into one versioned inventory with ID, source, speaker, text, hash, game, trigger and deployed URL.
+  - [ ] **TASK-00193** [AI] Link QA evidence (CI/build/browser/devices), confidence level, review status and unresolved blockers per clip.
+  - [ ] **TASK-00194** [AI] Publish a machine-readable CSV/JSON and human audit in VoiceBank with source references.
+  - [ ] **TASK-00195** [AI] Reconcile all 48 task checkboxes from actual proof; leave missing/private/inaccessible items explicitly OPEN.
+
+## Greptile review and agent triage — BKG (25 October 2026)
+
+These identifiers are **additional project-local review/coordination tasks**, not replacements for the existing global audio IDs `036`, `040`–`048` or `TASK-00148`–`TASK-00195`. Keep all the original audio work and checkbox states intact. No audio runtime change or deployment is claimed here.
+
+**Evidence:** [BucklandBlocks PR #42](https://github.com/Parris-Tech-Services/BucklandBlocks/pull/42), Greptile review `34999411`, completed 24 Oct 2026 at review SHA `7f0bcc2f6b5a5fc63d8871603933c5097f152921`, confidence **5/5** with **zero actionable findings**. PR #42 has since merged into `main` at `87b5f47dc994f592bd6badfac6e29d1bdd9cfa2e`. **Important:** this was a *documentation-only numbering diff*; it is not an audit of audio/gameplay code, CI results, browser playtest, or production behaviour.
+
+**Agent starting order:** (1) `BKG-002` to select a meaningful source-code review surface; (2) `BKG-003` to translate any *validated* findings to existing numbered tasks or new project-local IDs; (3) start actual gameplay/audio triage at already-existing **`TASK-00148`**, then `TASK-00149` and `TASK-00150` (unless a validated P0/P1 takes precedence); (4) release and re-review gates. Before coding, inspect `AGENTS.md`, `codingprinciples.md`, `OWNERSHIP.md`, `RELEASE_GATES.md`, current `main`, open PRs and agent claims. **Do not push or merge directly to main**; Buckland's rules require a feature branch, PR, quality gate, preview and user acceptance for gameplay changes.
+
+- [x] **BKG-001** [REVIEW VERIFIED] Reconcile existing Greptile review `34999411` with merged PR #42 and its source commit. **Evidence:** reviewed task-numbering diff, no Greptile findings, merged PR #42. This completes documentation-diff review **only**.
+- [ ] **BKG-002** [P2 / NEXT AUDIT] Review real gameplay/audio changes, not merely the task-numbering diff. **Start:** list open/newest code-bearing PRs, compare each head with `main`, reuse completed same-head Greptile code reviews and choose one meaningful code diff for Greptile, or record `BLOCKED_NO_PR` if no suitable reviewable PR. **Accept:** completed review ID and reviewed SHA, exact GitHub inline comments or documented zero findings; distinguish PR-scope from repository-wide coverage; avoid duplicate credit charges.
+- [ ] **BKG-003** [P2 / TRIAGE] For every actionable source-code Greptile finding, check current source/repro, assign severity P0–P3 and **first reuse existing audio task IDs** when equivalent (especially `TASK-00148`–`TASK-00150`). Give each distinct new issue an unused monotonically numbered `BKG` task with file/line, PR comment, test and acceptance. **Accept:** no duplicate IDs or manufactured defects and a clear next unclaimed task.
+- [ ] **BKG-004** [P2 / AUDIO ACCEPTANCE] Fulfil existing `TASK-00148` (event-to-clip mapping) → `TASK-00149` (existing quality/test gate) → `TASK-00150` (browser and deployed audio/save/mute acceptance), then relevant tasks `040`–`048`. **Accept:** real source/event evidence, automated suite exit status, browser/phone-sized results, verified production build SHA and no unintended autoplay or paid generation. Do not close these global IDs until tested.
+- [ ] **BKG-005** [P2 / HANDOFF] Verify that the existing issue/Greptile analytics, project task register and [portfolio queue](https://github.com/Parris-Tech-Services/RepoClean/blob/antigravity-push/docs/GREPTILE_PORTFOLIO_REVIEW_QUEUE_2026-10-24.md) consistently record reviewed SHA, known findings, open IDs, agent ownership and next task; verify Greptile review instructions and real automatic PR triggers separately. **Accept:** documented status with links and proof. This documentation PR must pass Buckland quality checks and any required review before merging.
+
 
 _Buckland Blocks scope: do not invent audio-to-event matches. Review actual gameplay first, integrate only suitable audio, and test phone and desktop experience before claiming complete._
 
