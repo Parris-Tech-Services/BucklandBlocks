@@ -48,7 +48,7 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
   return <div role="dialog" aria-modal="true" aria-labelledby="pause-title"
     className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
     <div className="bg-gray-800 border-2 border-gray-400 p-6 rounded-lg text-white w-full max-w-sm max-h-full overflow-auto">
-      <h2 id="pause-title" className="text-2xl font-bold mb-4">Buckland Blocks</h2>
+      <h2 id="pause-title" className="text-2xl font-bold mb-4">Voxelvale</h2>
       <p className="mb-4">Paused. Resume captures your mouse; Escape releases it.</p>
       <div className="space-y-3">
         <button autoFocus disabled={!canResume} onClick={onClose} className="w-full p-3 bg-gray-700 rounded disabled:opacity-50">Resume Game</button>

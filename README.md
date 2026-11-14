@@ -1,4 +1,4 @@
-# Buckland Blocks
+# Voxelvale (formerly Buckland Blocks)
 
 Engineering principles: v5.1
 Assurance tier: 2
