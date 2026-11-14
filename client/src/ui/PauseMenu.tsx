@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import RecordedFieldGuide, { type BucklandGuideId } from './RecordedFieldGuide';
+import VoiceGuideControls from './VoiceGuideControls';
+import { useVoiceGuide } from '../lib/voice/voiceGuide';
+import { isFeatureOn } from '../engine/features';
 import { useAudio } from '../lib/stores/useAudio';
 import { initialSave, useGame } from '../lib/stores/useGame';
 import { deleteSave, readSave, writeSave } from '../engine/save';
@@ -28,9 +31,11 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
         } => chunk !== null) });
       setMessage('World saved on this device.');
       setGuideClip('VO068');
+      if (isFeatureOn('voiceguide')) useVoiceGuide.getState().playVoice('VO068', {preview:true});
     } catch {
       setMessage('Save failed. Your previous save has not been replaced. Check browser storage space or access.');
       setGuideClip('VO069');
+      if (isFeatureOn('voiceguide')) useVoiceGuide.getState().playVoice('VO069', {preview:true});
     }
   };
   const load = () => {
@@ -57,12 +62,15 @@ export default function PauseMenu({ onClose, canResume = true }: { onClose: () =
         <button onClick={startNew} className="w-full p-3 bg-red-800 rounded">New World</button>
       </div>
       <section aria-label="Optional recorded field guide" className="mt-3">
-        <button type="button" className="w-full rounded border border-gray-500 p-2 text-sm"
-          aria-pressed={!isMuted} onClick={toggleMute}>
-          {isMuted?'🔇 Enable recorded guide':'🔊 Mute recorded guide'}
-        </button>
-        <RecordedFieldGuide clipId={guideClip} enabled={!isMuted}/>
+        {isFeatureOn('voiceguide') ? <VoiceGuideControls /> : <>
+          <button type="button" className="w-full rounded border border-gray-500 p-2 text-sm"
+            aria-pressed={!isMuted} onClick={toggleMute}>
+            {isMuted?'Enable recorded guide':'Mute recorded guide'}
+          </button>
+          <RecordedFieldGuide clipId={guideClip} enabled={!isMuted}/>
+        </>}
       </section>
+      {isFeatureOn('voiceguide') && <button type="button" className="mt-2 w-full rounded border border-gray-500 p-2 text-xs" onClick={()=>useVoiceGuide.getState().playVoice('VO079',{preview:true})}>Hear end-of-session reminder</button>}
       {message && <p role="status" className="mt-4">{message}</p>}
     </div>
   </div>;

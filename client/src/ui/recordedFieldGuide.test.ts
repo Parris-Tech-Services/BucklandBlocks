@@ -36,3 +36,24 @@ test('every approved recording is copied before the client build',()=>{
   assert.match(packageJSON.scripts['build:client'],/^npm run prepare:voices && vite build$/);
   assert(packageJSON.scripts.build.includes('npm run prepare:voices && vite build'));
 });
+
+
+test('craft completion narrates only after the result is transferred in both supported crafting UIs',()=>{
+  const inventory=readFileSync('client/src/ui/Inventory.tsx','utf8');
+  const main=readFileSync('client/src/ui/Crafting.tsx','utf8');
+  for(const [name,src,begin,end] of [
+    ['inventory',inventory,'const takeCraftResult =','  useEffect(() =>'],
+    ['crafting panel',main,'const handleCraftButtonClick =','  const handle']
+  ] as const){
+    const start=src.indexOf(begin);
+    const stop=src.indexOf(end,start+begin.length);
+    assert(start>=0,name+' crafting handler exists');
+    const fn=src.slice(start,stop>=0?stop:undefined);
+    const state=fn.lastIndexOf('useGame.setState(');
+    const cue=fn.indexOf("emitVoiceEvent('VO071')");
+    assert(state>=0,name+' must commit the recipe result');
+    assert(cue>state,name+' success recording must follow state commit');
+    assert(fn.indexOf('if (!craftResult) return')>=0 || fn.indexOf('if(!craftResult)return')>=0,name+' must guard absent recipe');
+    assert(fn.indexOf('maxStack')>=0,name+' must guard overflowing crafted cursor');
+  }
+});
