@@ -127,3 +127,36 @@ test("writeSave refuses to replace an invalid previous save", () => {
   assert.equal(storage.getItem(SAVE_KEY), invalid);
   assert.equal(storage.getItem(BACKUP_KEY), null);
 });
+
+test("furnace contents (block entities) survive save and reload", () => {
+  const storage = new MemoryStorage() as unknown as Storage;
+  const furnace = {
+    id: "3,64,-7",
+    type: BlockType.FURNACE,
+    inventory: [BlockType.SAND, BlockType.WOOD_LOG, null],
+    counts: [5, 2, 0],
+    progress: 0.4,
+  };
+  writeSave({ ...createSave(), blockEntities: [furnace] }, storage);
+
+  const result = readSave(storage);
+
+  assert.equal(result.error, null);
+  assert.deepEqual(result.data?.blockEntities, [furnace]);
+});
+
+test("saves without block entities stay readable and keep format version 2", () => {
+  const storage = new MemoryStorage() as unknown as Storage;
+  writeSave(createSave(), storage);
+
+  const raw = JSON.parse(storage.getItem(SAVE_KEY) ?? "{}");
+  assert.equal(raw.version, 2);
+  assert.equal(readSave(storage).data?.blockEntities, undefined);
+});
+
+test("malformed block entities are rejected", () => {
+  const storage = new MemoryStorage() as unknown as Storage;
+  const bad = { id: "not-a-position", type: BlockType.FURNACE, inventory: [null, null, null], counts: [0, 0, 0], progress: 0 };
+  assert.throws(() => writeSave({ ...createSave(), blockEntities: [bad] }, storage));
+  assert.equal(storage.getItem(SAVE_KEY), null);
+});
