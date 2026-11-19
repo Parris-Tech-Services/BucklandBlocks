@@ -24,6 +24,7 @@ const World: React.FC = () => {
   // per-frame store writes like fps/playerPosition.
   const setChunk = useGame((s) => s.setChunk);
   const getChunk = useGame((s) => s.getChunk);
+  const unloadCleanChunks = useGame((s) => s.unloadCleanChunks);
   const worldSeed = useGame((s) => s.worldSeed);
   const [renderedChunks, setRenderedChunks] = useState<Set<string>>(new Set());
   const lightsAdded = useRef(false);
@@ -80,9 +81,11 @@ const World: React.FC = () => {
       centerChunk.z,
       viewDistance,
     );
+    const keepKeys = new Set(coords.map(({ x, z }) => `${x},${z}`));
     setRenderedChunks(
-      new Set(coords.map(({ x, z }) => `${x},${z}`)),
+      keepKeys,
     );
+    unloadCleanChunks(keepKeys);
 
     const pending = coords.filter(({ x, z }) => !getChunk(x, z));
     let cancelled = false;
@@ -137,6 +140,7 @@ const World: React.FC = () => {
     osmData,
     getChunk,
     setChunk,
+    unloadCleanChunks,
     worldSeed,
   ]);
 

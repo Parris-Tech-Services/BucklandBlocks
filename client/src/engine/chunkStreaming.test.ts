@@ -4,6 +4,7 @@ import {
   CHUNK_GENERATION_BATCH,
   MAX_VIEW_DISTANCE,
   MIN_VIEW_DISTANCE,
+  cleanChunkKeysToUnload,
   clampViewDistance,
   orderedChunkCoords,
 } from "./chunkStreaming";
@@ -30,4 +31,17 @@ test("chunk coordinates are ordered nearest-first", () => {
 test("generation batch stays deliberately small", () => {
   assert.ok(CHUNK_GENERATION_BATCH > 0);
   assert.ok(CHUNK_GENERATION_BATCH <= 4);
+});
+
+test("streaming unloads clean distant chunks but retains edited chunks", () => {
+  const chunks = new Map([
+    ["0,0", { dirty: false }],
+    ["1,0", { dirty: false }],
+    ["2,0", { dirty: true }],
+  ]);
+
+  assert.deepEqual(
+    cleanChunkKeysToUnload(chunks, new Set(["1,0"])),
+    ["0,0"],
+  );
 });
