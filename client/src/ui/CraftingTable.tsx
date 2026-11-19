@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
 import recipesData from '../data/recipes.json';
+import {emitVoiceEvent} from '../lib/voice/voiceGuide';
 
 interface CraftingTableProps {
   onClose: () => void;
@@ -141,6 +142,7 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
           }
         }
         useGame.setState({ craftingTableGrid: newGrid, craftingTableCounts: newCounts });
+        emitVoiceEvent('VO071');
       }
       return;
     }
@@ -168,6 +170,7 @@ const CraftingTable: React.FC<CraftingTableProps> = ({ onClose }) => {
     }
     
     useGame.setState({ craftingTableGrid: newGrid, craftingTableCounts: newCounts, cursorItem: newCursor });
+    emitVoiceEvent('VO071');
   };
 
   return (

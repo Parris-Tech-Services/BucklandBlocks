@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "project": "Buckland Blocks",
+  "source": "ElevenLabs_100_Approved_Tracks/tracks_manifest.csv in connected Google Drive",
+  "locale": "en-AU",
+  "clips": [
+    {
+      "id": "VO061",
+      "file": "VO061.mp3",
+      "speaker": "Field guide",
+      "trigger": "First launch",
+      "text": "Welcome to Buckland Blocks. There is no hurry. Take a look around, find your bearings, and choose what to build first.",
+      "bytes": 99935,
+      "sha256": "b600a94f40bb56d3d0a4829ecee521b2dad4ddb92844b26a683c94889369934b",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO062",
+      "file": "VO062.mp3",
+      "speaker": "Field guide",
+      "trigger": "First block picked up",
+      "text": "A block in your inventory is a possibility. A few more, and you will have the start of a shelter.",
+      "bytes": 81963,
+      "sha256": "929348debc59f6b128848a01e4322248ded497306699732e4e5d4d89a1d0106e",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO063",
+      "file": "VO063.mp3",
+      "speaker": "Field guide",
+      "trigger": "First tool selected",
+      "text": "Your tool is ready. Check the block you are aiming at before you swing.",
+      "bytes": 58139,
+      "sha256": "20ad991c926db0727360712b81688ef9f13f6fd6040640a3d3850fa11d7e1afe",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO064",
+      "file": "VO064.mp3",
+      "speaker": "Field guide",
+      "trigger": "Crafting tutorial",
+      "text": "Try combining materials at a crafting table. The recipe tells you what the finished item needs.",
+      "bytes": 86560,
+      "sha256": "a159d630777be65be37803dbf114936a2a6b45d5befb60ca667859ed7b3921b3",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO065",
+      "file": "VO065.mp3",
+      "speaker": "Field guide",
+      "trigger": "Dusk approaches",
+      "text": "The light is changing. You might want to finish your shelter before exploring farther.",
+      "bytes": 65662,
+      "sha256": "c140b65083d132f53b90e79b6e1080c7775c3aee8ca509311d8750ce8e58da5a",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO066",
+      "file": "VO066.mp3",
+      "speaker": "Field guide",
+      "trigger": "Health reduced",
+      "text": "Your health has dropped. Find somewhere safer before deciding what to do next.",
+      "bytes": 74021,
+      "sha256": "6673e83e35eba769f4d4c87892ea1f4d17c607ea4e7a45baf12be2170cb39f08",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO067",
+      "file": "VO067.mp3",
+      "speaker": "Field guide",
+      "trigger": "Health critical",
+      "text": "You are in trouble. Step away from danger and make survival your next job.",
+      "bytes": 76111,
+      "sha256": "237c443e9d73b5881bf858951667d9b773e8cf917be602701d0cc4e1a54f0fc3",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO068",
+      "file": "VO068.mp3",
+      "speaker": "Field guide",
+      "trigger": "Save complete",
+      "text": "World saved. Your changes will be here when you return.",
+      "bytes": 51034,
+      "sha256": "9a910ea73263daeecc3541e03d8222ec099cb3bbf18aef5ed105168cc0e5bfc5",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO069",
+      "file": "VO069.mp3",
+      "speaker": "Field guide",
+      "trigger": "Save not confirmed",
+      "text": "The save has not been confirmed. Check the message on screen before leaving.",
+      "bytes": 60647,
+      "sha256": "f6a994fd66beb716938ff9d216360401297cd787ae47701375f3e83176583486",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO070",
+      "file": "VO070.mp3",
+      "speaker": "Field guide",
+      "trigger": "First mined material",
+      "text": "There it is. One resource collected, and a little more freedom to make something useful.",
+      "bytes": 78201,
+      "sha256": "c0cceb142749f279fe8cb2b0f5a2ba61cf4b3f7888e660893a7cfa84030e8101",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO071",
+      "file": "VO071.mp3",
+      "speaker": "Field guide",
+      "trigger": "Craft first item",
+      "text": "Your first crafted item. Every useful tool starts with a handful of ordinary materials.",
+      "bytes": 84470,
+      "sha256": "136dd86036a020e95dc338796d8a51dd95b903758d5483bb2f09ad59a5713314",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO072",
+      "file": "VO072.mp3",
+      "speaker": "Field guide",
+      "trigger": "Inventory full",
+      "text": "Your inventory is full. Make room before you pick anything else up.",
+      "bytes": 56049,
+      "sha256": "8b64317d9966b3ed577d86cf04f6dcca7c3e32ef277026124a6f0cc5de85809d",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO073",
+      "file": "VO073.mp3",
+      "speaker": "Field guide",
+      "trigger": "Tool durability warning proposed",
+      "text": "That tool has seen a lot of work. Consider making a replacement before the next big job.",
+      "bytes": 81127,
+      "sha256": "527d90bb563eab0b6f405fa20cd8415e616ae0470842a1ea748d7320bf4c4fd7",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO074",
+      "file": "VO074.mp3",
+      "speaker": "Field guide",
+      "trigger": "Approach high ledge",
+      "text": "That is a long way down. Check your footing before you cross.",
+      "bytes": 49362,
+      "sha256": "acdb95d7565f42651c95bfac6a5c4c6e1e66859d653e9cd12233357ef797fd97",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO075",
+      "file": "VO075.mp3",
+      "speaker": "Field guide",
+      "trigger": "Fall damage",
+      "text": "That landing hurt. Give yourself a moment to get clear of the edge.",
+      "bytes": 57721,
+      "sha256": "955b288ed32cf85ff5160c217538021bb13e3d74fdd36463497e829550468fbd",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO076",
+      "file": "VO076.mp3",
+      "speaker": "Field guide",
+      "trigger": "First furnace use proposed",
+      "text": "Heat can turn raw material into something more useful. Watch the fuel as well as the result.",
+      "bytes": 85724,
+      "sha256": "0183dc8dd26c3632dbc8a8b0db43f9171e8c0727dc893d6361fbf5f6a3a03329",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO077",
+      "file": "VO077.mp3",
+      "speaker": "Field guide",
+      "trigger": "Return to camp",
+      "text": "Back to familiar ground. You can repair, sort your supplies, or head out again.",
+      "bytes": 69424,
+      "sha256": "778e83be11d0e74d94cc68d828740a187658649b11d046ee12ca8d3f3473e8bd",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO078",
+      "file": "VO078.mp3",
+      "speaker": "Field guide",
+      "trigger": "Respawn",
+      "text": "You are back. Your next attempt starts with what you learned from the last one.",
+      "bytes": 62736,
+      "sha256": "c8c93af027f7bb8a6ccdd4b69b6b594d0c59f36c18b1a8d92fea851ca7062e1f",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO079",
+      "file": "VO079.mp3",
+      "speaker": "Field guide",
+      "trigger": "Session complete",
+      "text": "That is enough for now if you want to stop. Save your world so the next visit starts smoothly.",
+      "bytes": 84888,
+      "sha256": "936ff76e02a1cb12aa48fbb956e24e0b1a4eed93273cf726f36f98d563419912",
+      "voiceName": "Andy Black"
+    },
+    {
+      "id": "VO080",
+      "file": "VO080.mp3",
+      "speaker": "Field guide",
+      "trigger": "Voice off setting",
+      "text": "Voice guidance is optional. You can turn it off at any time in Settings.",
+      "bytes": 63572,
+      "sha256": "01ca34810b2dd33d3946cfbb19a9b3ca98f0878ba60c51e76d6de68c38dd23a6",
+      "voiceName": "Andy Black"
+    }
+  ]
+}
