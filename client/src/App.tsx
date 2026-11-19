@@ -18,6 +18,8 @@ import HooksBridge from "./renderer/HooksBridge";
 import { gameInput } from "./engine/input";
 import { isGameplayActive, useSession } from "./engine/session";
 import { useGame } from "./lib/stores/useGame";
+import {emitVoiceEvent,useVoiceGuide} from "./lib/voice/voiceGuide";
+import VoiceGuideCaption from "./ui/VoiceGuideCaption";
 import { cycleHotbarSlot } from "./engine/hotbar";
 import { menuKeyAction } from "./engine/menuKeys";
 import "@fontsource/inter";
@@ -28,6 +30,19 @@ function Game() {
   const setMenu = useSession((state) => state.setMenu);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
+  useEffect(()=>{
+    if(!isFeatureOn('voiceguide'))return;
+    const removeGame=useGame.subscribe((now,before)=>{
+      if(now.health<before.health){if(now.health<=6)emitVoiceEvent('VO067');else emitVoiceEvent('VO066')}
+      if(before.gameTime<16000&&now.gameTime>=16000)emitVoiceEvent('VO065');
+    });
+    const removeMenu=useSession.subscribe((now,before)=>{
+      if(now.menu===before.menu)return;
+      if(now.menu==='crafting_table')emitVoiceEvent('VO064');
+      if(now.menu==='furnace')emitVoiceEvent('VO076');
+    });
+    return ()=>{removeGame();removeMenu();useVoiceGuide.getState().stopVoice()};
+  },[]);
 
   useEffect(() => {
     const clear = () => gameInput.clear();
@@ -278,6 +293,7 @@ function Game() {
       </Canvas>
 
       <GameHUD />
+      {isFeatureOn('voiceguide')&&<VoiceGuideCaption />}
 
       <div hidden={menu !== "inventory"}>
         {isFeatureOn("inventorypanels") ? <Inventory onClose={resume} /> : <LegacyInventory onClose={resume} />}
