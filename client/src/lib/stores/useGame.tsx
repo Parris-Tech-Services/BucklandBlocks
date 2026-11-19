@@ -6,6 +6,7 @@ import { readSave } from "../../engine/save";
 import { MAX_HEALTH } from "../../engine/physics";
 import { takeFromHotbarSlot } from "../../engine/hotbar";
 import { createWorldSeed, normalizeWorldSeed } from "../../engine/worldSeed";
+import {emitVoiceEvent} from "../voice/voiceGuide";
 
 export type GamePhase = "ready" | "playing" | "ended";
 
@@ -256,7 +257,10 @@ export const useGame = create<GameState>()(
     
     // Inventory actions
     setSelectedSlot: (slot: number) => {
-      set({ selectedSlot: Math.max(0, Math.min(8, slot)) });
+      const selected=Math.max(0,Math.min(8,slot));const previous=get().selectedSlot;
+      set({selectedSlot:selected});
+      const item=get().inventory[selected];
+      if(selected!==previous&&item!==null&&getBlockData(item)?.isTool)emitVoiceEvent('VO063');
     },
     
     
@@ -324,6 +328,8 @@ export const useGame = create<GameState>()(
         if (remaining > 0) console.warn('Inventory full!');
         return { inventory: newInventory, inventoryCounts: newCounts };
       });
+      if(remaining<count&&!getBlockData(blockType)?.isTool)emitVoiceEvent('VO062');
+      if(remaining>0)emitVoiceEvent('VO072');
       return remaining;
     },
     

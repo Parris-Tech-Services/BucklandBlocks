@@ -12,6 +12,7 @@ import { hasSolidSupport } from "./placement";
 import { isFeatureOn } from "./features";
 import { getFallDamage } from "./physics";
 import { initialSave, useGame } from "../lib/stores/useGame";
+import {emitVoiceEvent} from "../lib/voice/voiceGuide";
 import {
   moveAxisWithCollision,
   collidesAt,
@@ -397,6 +398,7 @@ const Player: React.FC = () => {
       const damage = getFallDamage(fallDistance, inWater);
       if (damage > 0) {
         damagePlayer(damage);
+        emitVoiceEvent('VO075');
       }
       fallStartYRef.current = null;
     }
@@ -467,6 +469,8 @@ const Player: React.FC = () => {
       ];
       drops.forEach((drop) => {
         const remaining = addToInventory(drop.id, drop.count);
+        // A mined block is not collected when the inventory rejected every drop.
+        if (remaining < drop.count) emitVoiceEvent('VO070');
         if (remaining > 0) {
           addDroppedItem(
             drop.id,

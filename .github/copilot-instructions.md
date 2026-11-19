@@ -1,7 +1,7 @@
 # Copilot/AI Agent Instructions for Buckland Blocks
 
 ## Project Overview
-- **Buckland Blocks** is a browser-based voxel sandbox game that procedurally recreates a real-world location (starting at 53 Buckland Street, Epsom VIC 3551) using OpenStreetMap (OSM) data.
+- **Buckland Blocks** is a browser-based voxel sandbox game that procedurally recreates a real-world location (starting on Buckland Street, Epsom VIC 3551) using OpenStreetMap (OSM) data.
 - The project is built with modern web technologies: React, Three.js (via @react-three/fiber), Zustand for state, and Vite for build tooling.
 - The world is divided into 16×16×128 voxel chunks, with chunked rendering, greedy meshing, and frustum culling for performance.
 - OSM data is fetched and processed to extrude buildings and roads into the voxel world at runtime.

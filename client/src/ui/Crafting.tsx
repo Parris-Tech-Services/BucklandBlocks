@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { BlockType, getBlockData } from '../engine/blocks';
 import { useGame } from '../lib/stores/useGame';
 import recipesData from '../data/recipes.json';
+import {emitVoiceEvent} from '../lib/voice/voiceGuide';
 
 interface CraftingProps {
   onClose: () => void;
@@ -162,6 +163,7 @@ const Crafting: React.FC<CraftingProps> = ({ onClose }) => {
     }
     
     useGame.setState({ craftingGrid: newGrid, craftingCounts: newCounts, cursorItem: newCursor });
+    emitVoiceEvent('VO071');
   };
 
   const renderSlot = (slotIndex: number) => {

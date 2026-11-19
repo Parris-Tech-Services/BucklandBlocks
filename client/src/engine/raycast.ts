@@ -42,7 +42,9 @@ export function performRaycast(
   while (distance < maxDistance) {
     const blockType = getBlock(x, y, z);
     
-    if (blockType !== BlockType.AIR && blockType !== undefined) {
+    // Water is see-through for aiming (it can't be mined). Treating it as a
+    // target left a player standing in water unable to aim at anything.
+    if (blockType !== BlockType.AIR && blockType !== BlockType.WATER && blockType !== undefined) {
       return {
         position: new THREE.Vector3(x, y, z),
         normal: hitNormal.clone(),
